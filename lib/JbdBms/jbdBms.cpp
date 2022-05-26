@@ -49,7 +49,12 @@ bool JbdBms::readBmsData()
   }
   else
   {
-    return false;
+    // return false;
+    // code for workaround
+    Serial.println("ERROR: checksum false for readBmsData(), but ignored");
+    parseReqBasicMessage(responce);
+    return true;
+    //
   }
   return true;
 }
@@ -70,6 +75,7 @@ bool JbdBms::readPackData()
   }
   else
   {
+    Serial.println("ERROR: checksum false for readPackData()");
     return false;
   }
   return true;
@@ -98,6 +104,11 @@ int16_t JbdBms::getCurrent2()
 float JbdBms::getResidualcap()
 {
   return m_residualcap;
+}
+
+uint16_t JbdBms::getCellBalance()
+{
+  return int_cellbalance;
 }
 
 float JbdBms::getChargePercentage()
@@ -143,12 +154,12 @@ int16_t JbdBms::getTemp1_2()
  */
 float JbdBms::getTemp2()
 {
-  return int_Temp2;
+  return m_Temp2;
 }
 
 int16_t JbdBms::getTemp2_2()
 {
-  return m_Temp1;
+  return int_Temp2;
 }
 
 packCellInfoStruct JbdBms::getPackCellInfo()
@@ -178,7 +189,8 @@ void JbdBms::parseReqBasicMessage(uint8_t *t_message)
   int_current = two_ints_into16(t_message[6], t_message[7]);
   m_current = (float)int_current;
   // 10mAh
-  m_residualcap = (float)two_ints_into16(t_message[8], t_message[9]) / 100.0;
+  int_residualcap = two_ints_into16(t_message[8], t_message[9]);
+  m_residualcap = (float)int_residualcap / 100.0;
 
   if (m_current > 32768)
   {
@@ -188,6 +200,8 @@ void JbdBms::parseReqBasicMessage(uint8_t *t_message)
   {
     m_current = m_current * 10.0;
   }
+
+  int_cellbalance = two_ints_into16(t_message[16], t_message[17]);
 
   m_chargePercentage = t_message[23];
 

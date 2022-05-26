@@ -72,6 +72,8 @@ public:
 
   float getResidualcap();
 
+  uint16_t getCellBalance();
+
   float getChargePercentage();
   uint16_t getChargePercentage2();
 
@@ -98,6 +100,11 @@ private:
   int16_t int_current = 0;
 
   float m_residualcap = 0;
+  uint16_t int_residualcap = 0;
+
+  uint16_t int_cellbalance = 0;
+  uint16_t int_cellbalance2 = 0;
+
   float m_chargePercentage = 0;
   uint16_t int_chargePercentage = 0;
 

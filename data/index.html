@@ -12,11 +12,11 @@
         }
 
         .topBar {
-            font-size: 80px;
+            font-size: 60px;
             font-family: sans-serif;
             font-weight: bold;
             text-align: center;
-            padding: 20px 0 20px 0;
+            padding: 5px 0 5px 0;
         }
 
         .clear:before,
@@ -39,7 +39,7 @@
             font-size: 50px;
             font-weight: bold;
             text-align: center;
-            padding: 20px 0 5px 0;
+            padding: 10px 0 5px 0;
         }
 
         .title-2 {
@@ -50,6 +50,15 @@
             text-align: center;
             padding: 20px 0 5px 0;
         }
+
+        .switch-title {
+            font-family: sans-serif;
+            font-size: 30px;
+            font-weight: bold;
+            text-align: center;
+            /*padding: 20px 0 5px 0;*/
+        }
+
 
         .gauge {
             display: block;
@@ -78,67 +87,218 @@
             width: 1%;
             min-height: 100px;
         }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        th,
+        td {
+            border: solid 1px;
+            border-color: white;
+        }
+
+        .toggle {
+            /*float: left;*/
+            position: relative;
+            width: 80%;
+            height: 48px;
+            margin-top: 20px;
+            margin-right: auto;
+            margin-bottom: 20px;
+            margin-left: auto;
+            border-radius: 50px;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .toggle input[type=checkbox] {
+            display: none;
+        }
+
+        .toggle:before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: #e9e9eb;
+            -webkit-transition: 0.2s ease-out;
+            transition: 0.2s ease-out;
+        }
+
+        .toggle:after {
+            content: "";
+            position: absolute;
+            top: 3px;
+            /* left: 84%; */
+            right: 2%;
+            width: 42px;
+            height: 42px;
+            display: block;
+            border-radius: 50px;
+            background: #fff;
+            box-shadow: 0 9px 28px -6px rgba(0, 0, 0, 0.3);
+            -webkit-transition: 0.2s ease-out;
+            transition: 0.2s ease-out;
+        }
+
+        .toggle.checked:before {
+            background: #35c759;
+        }
+
+        .toggle.checked:after {
+            /*left: 33px;*/
+            left: 2%;
+            box-shadow: 0 9px 28px -6px rgba(0, 0, 0, 0.5);
+        }
     </style>
     <!--
-    <script src="/justgage/raphael-min.js"></script>
-    <script src="/justgage/justgage.min.js"></script>
+    <script src="/raphael.min.js"></script>
+    <script src="/justgage.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.1.4/raphael-min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/justgage/1.2.9/justgage.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/justgage/1.5.1/justgage.min.js"></script>
+    <script>
+        function toggleSwitch(element, mode) {
+            switch (mode) {
+                case 3:
+                    if (element.classList.contains('checked')) element.classList.remove('checked');
+                    else element.classList.add('checked');
+                    break;
+                case 1:
+                    if (!element.classList.contains('checked')) element.classList.add('checked');
+                    break;
+                case 0:
+                    if (element.classList.contains('checked')) element.classList.remove('checked');
+                    break;
+            }
+
+        };
+    </script>
 </head>
 
 <body>
     <div class="topBar">Jun's Battery</div>
 
+    <div class="title size-3">Total Voltage</div>
     <div class="title size-3">Current</div>
-    <div class="title size-3">Charge</div>
     <div class="clear"></div>
 
+    <div id="totalVoltageID" class="gauge size-3"></div>
+    <div class="h-split"></div>
     <div id="currentID" class="gauge size-3"></div>
-    <div class="h-split"></div>
+    <div class="clear"></div>
+
+    <div class="title size-3">Charge</div>
+    <div class="title size-3">Voltage Diff</div>
+    <div class="clear"></div>
+
     <div id="chagePercentageID" class="gauge size-3"></div>
-    <div class="clear"></div>
-
-    <div class="title size-3">Cell 1</div>
-    <div class="title size-3">Cell 2</div>
-    <div class="clear"></div>
-
-    <div id="cell1VoltageID" class="gauge size-3"></div>
     <div class="h-split"></div>
-    <div id="cell2VoltageID" class="gauge size-3"></div>
+    <div id="voltageDiffID" class="gauge size-3"></div>
     <div class="clear"></div>
 
-    <div class="title size-3">Cell 3</div>
-    <div class="title size-3">Cell 4</div>
+    <div class="title size-2">Cell 1</div>
+    <div class="title size-2">Cell 2</div>
+    <div class="title size-2">Temperature1</div>
     <div class="clear"></div>
 
-    <div id="cell3VoltageID" class="gauge size-3"></div>
+    <div id="cell1VoltageID" class="gauge size-2"></div>
     <div class="h-split"></div>
-    <div id="cell4VoltageID" class="gauge size-3"></div>
+    <div id="cell2VoltageID" class="gauge size-2"></div>
+    <div class="h-split"></div>
+    <div id="temperature1ID" class="gauge size-2"></div>
     <div class="clear"></div>
 
-    <div class="title-2 size-2">Total Voltage</div>
-    <div class="title-2 size-2">Voltage Diff</div>
-    <div class="title-2 size-2">Temperature</div>
+    <div class="title size-2">Cell 3</div>
+    <div class="title size-2">Cell 4</div>
+    <div class="title size-2">Temperature2</div>
     <div class="clear"></div>
 
-    <div id="totalVoltageID" class="gauge size-2"></div>
+    <div id="cell3VoltageID" class="gauge size-2"></div>
     <div class="h-split"></div>
-    <div id="voltageDiffID" class="gauge size-2"></div>
+    <div id="cell4VoltageID" class="gauge size-2"></div>
     <div class="h-split"></div>
-    <div id="temperatureID" class="gauge size-2"></div>
-    <div class="h-split"></div>
-
+    <div id="temperature2ID" class="gauge size-2"></div>
+    <div class="clear"></div>
+    <table>
+        <tr>
+            <td rowspan="2">
+                <div class="switch-title">
+                    Charging
+                </div>
+                <div class="toggle" id="chargeStatusId" onclick="toggleSwitch(this, 3)">
+                    <input type="checkbox" name="chargeStatus" />
+                </div>
+            </td>
+            <td rowspan="2">
+                <div class="switch-title">
+                    Discharg
+                </div>
+                <div class="toggle" id="dischargeStatusId" onclick="toggleSwitch(this, 3)">
+                    <input type="checkbox" name="dischargeStatus" />
+                </div>
+            </td>
+            <td style="border-right:none; width:120px">
+                <div class="switch-title">
+                    Cell 1
+                </div>
+            </td>
+            <td style="border-left:none;">
+                <div class="toggle" id="cellBalanceId-0">
+                    <input type="checkbox" name="cellBalance" />
+                </div>
+            </td>
+            <td style="border-right:none; width:120px">
+                <div class="switch-title">
+                    Cell 2
+                </div>
+            </td>
+            <td style="border-left:none;">
+                <div class="toggle" id="cellBalanceId-1">
+                    <input type="checkbox" name="cellBalance" />
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td style="border-right:none; width:120px">
+                <div class="switch-title">
+                    Cell 3
+                </div>
+            </td>
+            <td style="border-left:none;">
+                <div class="toggle" id="cellBalanceId-2">
+                    <input type="checkbox" name="cellBalance" />
+                </div>
+            </td>
+            <td style="border-right:none; width:120px">
+                <div class="switch-title">
+                    Cell 4
+                </div>
+            </td>
+            <td style="border-left:none;">
+                <div class="toggle" id="cellBalanceId-3">
+                    <input type="checkbox" name="cellBalance" />
+                </div>
+            </td>
+        </tr>
+    </table>
 
     <script>
 
         document.addEventListener("DOMContentLoaded", function (event) {
-            var cell1Voltage, cell2Voltage, cell3Voltage, cell4Voltage, totalVoltage, current, chagePercentage, temperature;
+            var cell1Voltage, cell2Voltage, cell3Voltage, cell4Voltage, totalVoltage, current, chagePercentage, temperature1, temperature2;
 
             var defs1 = {
                 //label: "label",
                 //value: 3.5,
-                min: 0,
+                //min: 0,
                 //max: 4,
                 //decimals: 3,
                 gaugeWidthScale: 0.6,
@@ -159,7 +319,7 @@
             var defs2 = {
                 //label: "label",
                 //value: 35,
-                min: 0,
+                //min: 0,
                 //max: 100,
                 //decimals: 0,
                 gaugeWidthScale: 0.6,
@@ -178,6 +338,7 @@
                 id: "currentID",
                 defaults: defs1,
                 //label: "Current",
+                //min: -40,
                 max: 40,
                 decimals: 2,
                 //labelMinFontSize: 15,
@@ -244,6 +405,7 @@
                 defaults: defs1,
                 //label: "Total Voltage",
                 max: 16,
+                min: 10,
                 value: 12,
                 decimals: 2,
                 //labelMinFontSize: 18,
@@ -262,8 +424,18 @@
 
             });
 
-            temperature = new JustGage({
-                id: "temperatureID",
+            temperature1 = new JustGage({
+                id: "temperature1ID",
+                defaults: defs1,
+                //label: "Temperature",
+                max: 50,
+                decimals: 1,
+                //labelMinFontSize: 18,
+                symbol: "C"
+            });
+
+            temperature2 = new JustGage({
+                id: "temperature2ID",
                 defaults: defs1,
                 //label: "Temperature",
                 max: 50,
@@ -276,33 +448,34 @@
                 fetch("/getValues")
                     .then(response => response.json())
                     .then(data => {
-                        current.refresh(data.batteryCurrent / 100);
+                        var value = data.batteryCurrent / 100;
+                        if (value >= 0) {
+                            current.refresh(value, 40, 0);
+                        } else {
+                            current.refresh(value, 0, -40);
+                        }
                         chagePercentage.refresh(data.batteryChargePercentage);
-                        temperature.refresh((data.batteryTemp1 + data.batteryTemp2) / 2 / 10);
+                        temperature1.refresh(data.batteryTemp1 / 10);
+                        temperature2.refresh(data.batteryTemp2 / 10);
                         totalVoltage.refresh(data.batteryVoltage / 100);
                         cell1Voltage.refresh(data.batteryList[0] / 1000);
                         cell2Voltage.refresh(data.batteryList[1] / 1000);
                         cell3Voltage.refresh(data.batteryList[2] / 1000);
                         cell4Voltage.refresh(data.batteryList[3] / 1000);
                         voltageDiff.refresh(data.batteryDiff / 1000);
+                        toggleSwitch(document.getElementById('chargeStatusId'), data.chargeStatus);
+                        toggleSwitch(document.getElementById('dischargeStatusId'), data.dischargeStatus);
+                        for (i = 0; i < 4; i++) {
+                            toggleSwitch(document.getElementById('cellBalanceId-' + i), data.cellBalanceList[i]);
+                        }
                     }
                     );
             };
 
-            // update the value randomly
+
+
             setInterval(() => {
                 getValues();
-                /*
-                cell1Voltage.refresh(Math.random() * 4);
-                cell2Voltage.refresh(Math.random() * 4);
-                cell3Voltage.refresh(Math.random() * 4);
-                cell4Voltage.refresh(Math.random() * 4);
-                totalVoltage.refresh(Math.random() * 16);
-                current.refresh(Math.random() * 40);
-                chagePercentage.refresh(Math.random() * 100);
-                voltageDiff.refresh(Math.random() * 1);
-                temperature.refresh(Math.random() * 50);
-                */
             }, 1000);
         });
     </script>
