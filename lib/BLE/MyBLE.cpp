@@ -62,8 +62,10 @@ static bool processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned i
 {
     // TRACE;
     //  Expected data len
-    if (dataLen != 0x1B)
+    //if (dataLen != 0x1B)
+    if (dataLen != 0x1D) //changed by Jun
     {
+        LOGD(TAG, "BasicInfo data length invalid: " + String(dataLen));
         return false;
     }
 
@@ -304,8 +306,8 @@ private:
 public:
     void onResult(BLEAdvertisedDevice advertisedDevice)
     {
-        LOGD(TAG, "BLE Advertised Device found:");
-        LOGD(TAG, advertisedDevice.toString().c_str());
+        LOGD(TAG, "BLE Advertised Device found: " + String(advertisedDevice.toString().c_str()));
+        // LOGD(TAG, advertisedDevice.toString().c_str());
 
         // We have found a device, let us now see if it contains the service we are looking for.
         if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(serviceUUID))
@@ -339,6 +341,8 @@ class MyBLE
 {
 private:
     const String TAG = "MyBLE";
+
+public:
     void bmsGetInfo3()
     {
         // TRACE;
@@ -363,6 +367,7 @@ private:
     void printBasicInfo() // debug all data to uart
     {
         // TRACE;
+        LOGD(TAG, "BasicInfo Beging >>>>>>>>>>");
         Serial.printf("Total voltage: %f\n", (float)packBasicInfo.Volts / 1000);
         Serial.printf("Amps: %f\n", (float)packBasicInfo.Amps / 1000);
         Serial.printf("CapacityRemainAh: %f\n", (float)packBasicInfo.CapacityRemainAh / 1000);
@@ -372,12 +377,34 @@ private:
         Serial.printf("Balance Code Low: 0x%x\n", packBasicInfo.BalanceCodeLow);
         Serial.printf("Balance Code High: 0x%x\n", packBasicInfo.BalanceCodeHigh);
         Serial.printf("Mosfet Status: 0x%x\n", packBasicInfo.MosfetStatus);
+        LOGD(TAG, "BasicInfo END <<<<<<<<<<<<<");
+        commSerial.println();
     }
 
-public:
+    void printCellInfo() // debug all data to uart
+    {
+        // TRACE;
+        LOGD(TAG, "CellInfo Beging >>>>>>>>>>");
+        commSerial.printf("Number of cells: %u\n", packCellInfo.NumOfCells);
+        for (byte i = 1; i <= packCellInfo.NumOfCells; i++)
+        {
+            commSerial.printf("Cell no. %u", i);
+            commSerial.printf("   %f\n", (float)packCellInfo.CellVolt[i - 1] / 1000);
+        }
+        commSerial.printf("Max cell volt: %f\n", (float)packCellInfo.CellMax / 1000);
+        commSerial.printf("Min cell volt: %f\n", (float)packCellInfo.CellMin / 1000);
+        commSerial.printf("Difference cell volt: %f\n", (float)packCellInfo.CellDiff / 1000);
+        commSerial.printf("Average cell volt: %f\n", (float)packCellInfo.CellAvg / 1000);
+        commSerial.printf("Median cell volt: %f\n", (float)packCellInfo.CellMedian / 1000);
+        LOGD(TAG, "CellInfo END <<<<<<<<<<<<<");
+        commSerial.println();
+    }
+
+    /*
     MyBLE()
     {
     }
+    */
 
     void bleStartup()
     {
@@ -405,17 +432,17 @@ public:
     bool connectToServer()
     {
         // TRACE;
-        LOGD(TAG, "Forming a connection to ");
+        LOGD(TAG, "Forming a connection to " + String(myDevice->getAddress().toString().c_str()));
         // lcdConnectingStatus(0);
-        LOGD(TAG, myDevice->getAddress().toString().c_str());
+        // LOGD(TAG, myDevice->getAddress().toString().c_str());
         BLEClient *pClient = BLEDevice::createClient();
-        LOGD(TAG, " - Created client");
+        LOGD(TAG, "Created client");
         // lcdConnectingStatus(1);
         pClient->setClientCallbacks(new MyClientCallback());
 
         // Connect to the remove BLE Server.
         pClient->connect(myDevice); // if you pass BLEAdvertisedDevice instead of address, it will be recognized type of peer device address (public or private)
-        LOGD(TAG, " - Connected to server");
+        LOGD(TAG, "Connected to server");
         // lcdConnectingStatus(2);
         //  Obtain a reference to the service we are after in the remote BLE server.
         //  BLERemoteService*
@@ -428,7 +455,7 @@ public:
             pClient->disconnect();
             return false;
         }
-        LOGD(TAG, " - Found our service");
+        LOGD(TAG, "Found our service");
         // lcdConnectingStatus(4);
 
         // Obtain a reference to the characteristic in the service of the remote BLE server.
@@ -441,14 +468,13 @@ public:
             pClient->disconnect();
             return false;
         }
-        LOGD(TAG, " - Found our characteristic");
+        LOGD(TAG, "Found our characteristic");
         // lcdConnectingStatus(6);
         //  Read the value of the characteristic.
         if (pRemoteCharacteristic->canRead())
         {
             std::string value = pRemoteCharacteristic->readValue();
-            LOGD(TAG, "The characteristic value was: ");
-            LOGD(TAG, value.c_str());
+            LOGD(TAG, "The characteristic value was: " + String(value.c_str()));
             commSerial.println(value.c_str());
         }
 
@@ -467,11 +493,12 @@ public:
         {
             if (connectToServer())
             {
-                LOGD(TAG, "We are now connected to the BLE Server.");
+                LOGD(TAG, "connected to the BLE Server.");
                 // lcdConnected();
             }
             else
             {
+                LOGD(TAG, "failed to connect to the BLE Server.");
                 // lcdConnectionFailed();
             }
             doConnect = false;
@@ -486,18 +513,21 @@ public:
             if ((currentMillis - previousMillis >= interval || newPacketReceived)) // every time period or when packet is received
             {
                 previousMillis = currentMillis;
-                // showInfoLcd();
+                // LOGD(TAG, "showing Info");
+                //  showInfoLcd();
 
                 if (toggle) // alternate info3 and info4
                 {
                     bmsGetInfo3();
-                    // showBasicInfo();
+                    // LOGD(TAG, "showing BasicInfo");
+                    //  showBasicInfo();
                     newPacketReceived = false;
                 }
                 else
                 {
                     bmsGetInfo4();
-                    // showCellInfo();
+                    // LOGD(TAG, "showing CellInfo");
+                    //  showCellInfo();
                     newPacketReceived = false;
                 }
                 toggle = !toggle;
@@ -529,6 +559,7 @@ public:
         }
     }
 
+    /*
     bool readBmsData()
     {
     }
@@ -545,6 +576,7 @@ public:
     int16_t getTemp2() {}
 
     packCellInfoStruct getPackCellInfo() {}
+    */
 };
 
 #endif /* MY_BLE_CPP_ */

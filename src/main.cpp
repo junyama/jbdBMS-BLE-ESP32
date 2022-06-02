@@ -115,7 +115,9 @@ void wifiConnect()
     {
       if (verbose > 1)
       {
-        LOGD(TAG, "IP: " + String(WiFi.localIP()));
+        Serial.print("IP: ");
+        Serial.println(WiFi.localIP());
+        //LOGD(TAG, "IP: " + String(WiFi.localIP())); does not show 4 octets format
       }
       digitalWrite(BLUELED, HIGH);
       break;
@@ -130,31 +132,37 @@ String getValues()
   String jsonStr = "";
   jsonStr.reserve(300);
   jsonStr += "{\"batteryTemp1\": ";
-  jsonStr += String(batteryTemp1);
+  jsonStr += String(packBasicInfo.Temp1);
   jsonStr += ", \"batteryTemp2\": ";
-  jsonStr += String(batteryTemp2);
+  jsonStr += String(packBasicInfo.Temp2);
   jsonStr += ", \"batteryChargePercentage\": ";
-  jsonStr += String(batteryChargePercentage);
+  jsonStr += String(packBasicInfo.CapacityRemainPercent);
   jsonStr += ", \"batteryCurrent\": ";
-  jsonStr += String(batteryCurrent);
+  jsonStr += String(packBasicInfo.Amps / 10);
   jsonStr += ", \"batteryCycleCount\": ";
   jsonStr += String(batteryCycleCount);
   jsonStr += ", \"batteryVoltage\": ";
-  jsonStr += String(batteryVoltage);
+  jsonStr += String(packBasicInfo.Volts / 10);
   jsonStr += ", \"chargeStatus\": ";
+  chargeStatus = packBasicInfo.MosfetStatus & 1;
   jsonStr += String(chargeStatus);
   jsonStr += ", \"dischargeStatus\": ";
+  dischargeStatus = packBasicInfo.MosfetStatus & 1 << 1;
   jsonStr += String(dischargeStatus);
   jsonStr += ", \"batteryList\": [";
-  jsonStr += String(cellInfo.CellVolt[0]);
-  for (int i = 1; i < cellInfo.NumOfCells; i++)
+  jsonStr += String(packCellInfo.CellVolt[0]);
+  for (int i = 1; i < packCellInfo.NumOfCells; i++)
   {
     jsonStr += ", ";
-    jsonStr += String(cellInfo.CellVolt[i]);
+    jsonStr += String(packCellInfo.CellVolt[i]);
   }
   jsonStr += "]";
   jsonStr += ", \"batteryDiff\": ";
-  jsonStr += String(cellDiffVoltage);
+  jsonStr += String(packCellInfo.CellDiff);
+  for (int i = 0; i < packCellInfo.NumOfCells; i++)
+      {
+        cellBalanceList[i] = packBasicInfo.BalanceCodeLow & 1 << i;
+      }
   jsonStr += ", \"cellBalanceList\": [";
   jsonStr += String(cellBalanceList[0]);
   for (int i = 1; i < cellInfo.NumOfCells; i++)
@@ -201,11 +209,6 @@ void setup()
   wifiConnect();
   LOGD(TAG, "WiFi setup done");
 
-  // setup BLE
-  bmsSerial.begin(9600, SERIAL_8N1, 21, 22);
-  myBms.bleStartup();
-  LOGD(TAG, "BLE setup done");
-
   // setup DateTime
   setupDateTime();
 
@@ -229,11 +232,27 @@ void setup()
 
   // init ambient channelID and key
   ambient.begin(channelId, writeKey, &client);
+  LOGD(TAG, "ambient setup done");
+
+  // setup BLE
+  bmsSerial.begin(9600, SERIAL_8N1, 21, 22);
+  myBms.bleStartup();
+  LOGD(TAG, "BLE setup done");
 }
 
 void loop()
 {
   myBms.bleRequestData();
+  if (newPacketReceived == true)
+	{
+		LOGD(TAG, "new pcaket received");
+    //showInfoLcd;
+		myBms.printBasicInfo();
+    LOGD(TAG, "Pack Voltage: " + String(packBasicInfo.Volts));
+    LOGD(TAG, "BalanceCodeLow: " + String(packBasicInfo.BalanceCodeLow));
+    LOGD(TAG, "MosfetStatus: " + String(packBasicInfo.MosfetStatus));
+		myBms.printCellInfo();
+	}
   /*
   if (millis() - SerialLastLoad >= powerMeasurementInterval)
   {
