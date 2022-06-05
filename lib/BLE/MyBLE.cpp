@@ -2,12 +2,10 @@
 #define MY_BLE_CPP_
 
 #include <Arduino.h>
-//#include <MyBMS.h>
 #include "ESPDateTime.h"
 
 #include "BLEDevice.h"
-#include "mydatatypes.h"
-//#include "BMS_process_data.cpp"
+#include "MyBLE.hpp"
 
 #define commSerial Serial
 
@@ -62,8 +60,8 @@ static bool processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned i
 {
     // TRACE;
     //  Expected data len
-    //if (dataLen != 0x1B)
-    if (dataLen != 0x1D) //changed by Jun
+    // if (dataLen != 0x1B)
+    if (dataLen != 0x1D) // changed by Jun
     {
         LOGD(TAG, "BasicInfo data length invalid: " + String(dataLen));
         return false;
@@ -100,7 +98,8 @@ static bool processCellInfo(packCellInfoStruct *output, byte *data, unsigned int
     output->NumOfCells = dataLen / 2; // Data length * 2 is number of cells !!!!!!
 
     // go trough individual cells
-    for (byte i = 0; i < dataLen / 2; i++)
+    // for (byte i = 0; i < dataLen / 2; i++)
+    for (byte i = 0; i < output->NumOfCells; i++)
     {
         output->CellVolt[i] = ((uint16_t)two_ints_into16(data[i * 2], data[i * 2 + 1])); // Resolution 1 mV
         _cellSum += output->CellVolt[i];
@@ -324,7 +323,10 @@ public:
 
 class MyClientCallback : public BLEClientCallbacks
 { // this is called on connect / disconnect by some underlying magic+
+private:
+    const String TAG = "MyClientCallback";
 
+public:
     void onConnect(BLEClient *pclient)
     {
     }
@@ -341,6 +343,7 @@ class MyBLE
 {
 private:
     const String TAG = "MyBLE";
+    BLEClient *pClient;
 
 public:
     void bmsGetInfo3()
@@ -420,14 +423,6 @@ public:
         pBLEScan->setActiveScan(true);
         pBLEScan->start(5, true);
     }
-    /*
-    static void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify) // this is called when BLE server sents data via notofication
-    {
-        // TRACE;
-        // hexDump((char*)pData, length);
-        bleCollectPacket((char *)pData, length);
-    }
-    */
 
     bool connectToServer()
     {
@@ -435,6 +430,7 @@ public:
         LOGD(TAG, "Forming a connection to " + String(myDevice->getAddress().toString().c_str()));
         // lcdConnectingStatus(0);
         // LOGD(TAG, myDevice->getAddress().toString().c_str());
+        pClient = BLEDevice::createClient();
         BLEClient *pClient = BLEDevice::createClient();
         LOGD(TAG, "Created client");
         // lcdConnectingStatus(1);
@@ -482,6 +478,13 @@ public:
             pRemoteCharacteristic->registerForNotify(notifyCallback);
 
         BLE_client_connected = true;
+    }
+
+    void disconnectFromServer() // does not work as intended, but automatically reconnected
+    {
+        pClient->disconnect();
+        // BLE_client_connected = false;
+        LOGD(TAG, "disconnected from the BLE Server.");
     }
 
     void bleRequestData()
@@ -558,25 +561,6 @@ public:
             LOGD(TAG, "Remote TX characteristic not found");
         }
     }
-
-    /*
-    bool readBmsData()
-    {
-    }
-
-    bool readPackData();
-
-    uint16_t getVoltage() {}
-    int16_t getCurrent() {}
-    int16_t getCycle() {}
-    uint16_t getCellBalance() {}
-    float getChargePercentage() {}
-    uint16_t getMosfet() {}
-    int16_t getTemp1() {}
-    int16_t getTemp2() {}
-
-    packCellInfoStruct getPackCellInfo() {}
-    */
 };
 
 #endif /* MY_BLE_CPP_ */

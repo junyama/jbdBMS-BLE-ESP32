@@ -245,9 +245,17 @@
                     <input type="checkbox" name="dischargeStatus" />
                 </div>
             </td>
+            <td rowspan="2">
+                <div class="switch-title">
+                    BLE
+                </div>
+                <div class="toggle" id="BLEStatusId" onclick="toggleSwitch(this, 3)">
+                    <input type="checkbox" name="BLEStatus" />
+                </div>
+            </td>
             <td style="border-right:none; width:120px">
                 <div class="switch-title">
-                    Cell 1
+                    C1
                 </div>
             </td>
             <td style="border-left:none;">
@@ -257,7 +265,7 @@
             </td>
             <td style="border-right:none; width:120px">
                 <div class="switch-title">
-                    Cell 2
+                    C2
                 </div>
             </td>
             <td style="border-left:none;">
@@ -269,7 +277,7 @@
         <tr>
             <td style="border-right:none; width:120px">
                 <div class="switch-title">
-                    Cell 3
+                    C3
                 </div>
             </td>
             <td style="border-left:none;">
@@ -279,7 +287,7 @@
             </td>
             <td style="border-right:none; width:120px">
                 <div class="switch-title">
-                    Cell 4
+                    C4
                 </div>
             </td>
             <td style="border-left:none;">
@@ -417,7 +425,7 @@
                 id: "voltageDiffID",
                 defaults: defs1,
                 //label: "Voltage Diff",
-                max: 1,
+                max: 0.2,
                 decimals: 3,
                 //labelMinFontSize: 18,
                 symbol: "V"
@@ -444,6 +452,13 @@
                 symbol: "C"
             });
 
+            function cellColorChange(value, median) {
+                var dif = value - median;
+                if (dif > 20) return "#FF0000";
+                if (dif < -20) return "#FFFF00";
+                return "#000000";
+            }
+
             function getValues() {
                 fetch("/getValues")
                     .then(response => response.json())
@@ -463,8 +478,15 @@
                         cell3Voltage.refresh(data.batteryList[2] / 1000);
                         cell4Voltage.refresh(data.batteryList[3] / 1000);
                         voltageDiff.refresh(data.batteryDiff / 1000);
+
+                        cell1Voltage.update('valueFontColor', cellColorChange(data.batteryList[0], data.cellMedian));
+                        cell2Voltage.update('valueFontColor', cellColorChange(data.batteryList[1], data.cellMedian));
+                        cell3Voltage.update('valueFontColor', cellColorChange(data.batteryList[2], data.cellMedian));
+                        cell4Voltage.update('valueFontColor', cellColorChange(data.batteryList[3], data.cellMedian));
+
                         toggleSwitch(document.getElementById('chargeStatusId'), data.chargeStatus);
                         toggleSwitch(document.getElementById('dischargeStatusId'), data.dischargeStatus);
+                        toggleSwitch(document.getElementById('BLEStatusId'), data.BLEConnected);
                         for (i = 0; i < 4; i++) {
                             toggleSwitch(document.getElementById('cellBalanceId-' + i), data.cellBalanceList[i]);
                         }

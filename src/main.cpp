@@ -1,18 +1,5 @@
-/*
- *  if the esp8266 board has usb to serial converter on the board, the hardware serial wont work, software serial must be used.
- *  I used ESP-01S. BMS may have 5v or 3.3v TTL level. Logic level shifter must install when BMS is 5v.
- *  wiring:
- *  [bms]   [step down to 3.3v]      [ESP-01S]
- *  VCC (12V) ---->  VIN+ ----------> 3V3
- *  TX  ----------------------------> RX
- *  RX  ----------------------------> TX
- *  GND  ---->  VIN-    ------------> GND
- *
- *  Please fill the wifi settings.
- *  Run web browser http://IP
- *
- */
 #include <WiFi.h>
+#include <WiFiMulti.h>
 #include "ESPAsyncWebServer.h"
 
 #include <MyBLE.cpp>
@@ -27,51 +14,51 @@
 
 #define BLUELED 32
 
-//#define MY_TX 14
-//#define MY_RX 12
-
 // debug cotrol
 const bool debugCtrl = false;
 const int verbose = 2;
-//const String TAG = "main";
-
-// HardwareSerial mySerial(2);
-// SoftwareSerial mySerial(MY_RX, MY_TX);
+// const String TAG = "main";
 
 // Wi-Fi client
-const char *ssidList[] = {"Jun-Home-AP", "Jun-FS020W"};
-const char *password = "takehiro"; // WIFI password
+// const char *ssidList[] = {"Jun-Home-AP", "Jun-FS020W"};
+//const char *ssidList[] = {"Jun-Home-AP", "Jun-FS020W"};
+//const char *password = "takehiro"; // WIFI password
 WiFiClient client;
+
+// WiFiMulti
+WiFiMulti wifiMulti;
+const uint32_t connectTimeoutMs = 10000;
 
 // Web server
 AsyncWebServer server(80);
 
 // JbbBms
 // JbdBms myBms(&mySerial);
-// JbdBms myBms(MY_RX, MY_TX);
 MyBLE myBms;
 
 // some varialbles declaration and initalization
-unsigned long SerialLastLoad = 0;
+// unsigned long SerialLastLoad = 0;
 const int powerMeasurementInterval = 1 * 1000; // milli sec
 
-packCellInfoStruct cellInfo;
+// packCellInfoStruct cellInfo;
 
-int batteryTemp1, batteryTemp2, batteryChargePercentage, batteryCurrent, batteryVoltage, cellDiffVoltage, batteryCycleCount, mosFet, cellBalance;
+// int batteryTemp1, batteryTemp2, batteryChargePercentage, batteryCurrent, batteryVoltage, cellDiffVoltage, batteryCycleCount, mosFet, cellBalance;
 bool cellBalanceList[4];
 bool chargeStatus, dischargeStatus;
-bool cellBalance1, cellBalance2, cellBalance3, cellBalance4;
+// bool cellBalance1, cellBalance2, cellBalance3, cellBalance4;
 
 // Ambient service
-const unsigned int channelId = 50366;
-const char *writeKey = "ccb476294fe16acd";
+// const unsigned int channelId = 50366; //Jun BMS (ESP32)
+const unsigned int channelId = 8630; // Battery Power Meter
+// const char *writeKey = "ccb476294fe16acd";
+const char *writeKey = "b473180b50bf1709";
 unsigned long ambientlLastSent = 0;
 const unsigned int ambientSendIntervalBase = 60 * 1000; // milli sec
 unsigned int ambientSendInterval = ambientSendIntervalBase;
 Ambient ambient;
 
 // sleep control
-float sleepVoltage = -11.0 * 100; // 10mV
+float sleepVoltage = 13.299 * 1000; // mV
 
 // local functions definitions
 
@@ -81,7 +68,7 @@ void setupDateTime()
   // you can use custom timeZone,server and timeout
   // DateTime.setTimeZone("CST-8");
   DateTime.setTimeZone("JST-9");
-  DateTime.setServer("ntp.gol.com");
+  DateTime.setServer("ntp.nict.jp");
   // DateTime.begin(15 * 1000);
   // from
   /** changed from 0.2.x **/
@@ -92,7 +79,60 @@ void setupDateTime()
     LOGD(TAG, "Failed to get time from server.");
 }
 
+void wifiScann()
+{
+  int n = WiFi.scanNetworks();
+  Serial.println("scan done");
+  if (n == 0)
+  {
+    Serial.println("no networks found");
+  }
+  else
+  {
+    Serial.print(n);
+    Serial.println(" networks found");
+    for (int i = 0; i < n; ++i)
+    {
+      // Print SSID and RSSI for each network found
+      Serial.print(i + 1);
+      Serial.print(": ");
+      Serial.print(WiFi.SSID(i));
+      Serial.print(" (");
+      Serial.print(WiFi.RSSI(i));
+      Serial.print(")");
+      Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? " " : "*");
+      delay(10);
+    }
+  }
+}
+
 void wifiConnect()
+{
+  Serial.println("Connecting Wifi...");
+  // if the connection to the stongest hotstop is lost, it will connect to the next network on the list
+  if (wifiMulti.run(connectTimeoutMs) == WL_CONNECTED)
+  {
+    /*
+    Serial.print("WiFi connected: ");
+    Serial.print(WiFi.SSID());
+    Serial.print(" ");
+    Serial.println(WiFi.RSSI());
+    */
+    String logText = "WiFi connected: " + WiFi.SSID();
+    logText += " " + String(WiFi.RSSI());
+    LOGD(TAG, logText);
+    Serial.print("IP: ");
+    Serial.println(WiFi.localIP());
+    digitalWrite(BLUELED, HIGH);
+  }
+  else
+  {
+    Serial.println("WiFi not connected!");
+  }
+}
+
+/*
+void wifiConnect2()
 {
   for (unsigned int i = 0; i < sizeof(ssidList); i++)
   {
@@ -117,7 +157,7 @@ void wifiConnect()
       {
         Serial.print("IP: ");
         Serial.println(WiFi.localIP());
-        //LOGD(TAG, "IP: " + String(WiFi.localIP())); does not show 4 octets format
+        // LOGD(TAG, "IP: " + String(WiFi.localIP())); does not show 4 octets format
       }
       digitalWrite(BLUELED, HIGH);
       break;
@@ -126,6 +166,7 @@ void wifiConnect()
     LOGD(TAG, "Timeout");
   }
 }
+*/
 
 String getValues()
 {
@@ -139,8 +180,8 @@ String getValues()
   jsonStr += String(packBasicInfo.CapacityRemainPercent);
   jsonStr += ", \"batteryCurrent\": ";
   jsonStr += String(packBasicInfo.Amps / 10);
-  jsonStr += ", \"batteryCycleCount\": ";
-  jsonStr += String(batteryCycleCount);
+  // jsonStr += ", \"batteryCycleCount\": ";
+  // jsonStr += String(batteryCycleCount);
   jsonStr += ", \"batteryVoltage\": ";
   jsonStr += String(packBasicInfo.Volts / 10);
   jsonStr += ", \"chargeStatus\": ";
@@ -160,19 +201,29 @@ String getValues()
   jsonStr += ", \"batteryDiff\": ";
   jsonStr += String(packCellInfo.CellDiff);
   for (int i = 0; i < packCellInfo.NumOfCells; i++)
-      {
-        cellBalanceList[i] = packBasicInfo.BalanceCodeLow & 1 << i;
-      }
+  {
+    cellBalanceList[i] = packBasicInfo.BalanceCodeLow & 1 << i;
+  }
   jsonStr += ", \"cellBalanceList\": [";
   jsonStr += String(cellBalanceList[0]);
-  for (int i = 1; i < cellInfo.NumOfCells; i++)
+  for (int i = 1; i < packCellInfo.NumOfCells; i++)
   {
     jsonStr += ", ";
     jsonStr += String(cellBalanceList[i]);
   }
   jsonStr += "]";
+  jsonStr += ", \"cellMedian\": ";
+  jsonStr += String(packCellInfo.CellMedian);
+  jsonStr += ", \"BLEConnected\": ";
+  jsonStr += String(BLE_client_connected);
   jsonStr += "}";
   return jsonStr;
+}
+
+String disconnectBLE()
+{
+  myBms.disconnectFromServer();
+  return "OK";
 }
 
 void setup()
@@ -206,10 +257,17 @@ void setup()
   // setup WiFi
   WiFi.mode(WIFI_STA);
   WiFi.hostname("JunBMS");
+  // Add list of wifi networks
+  wifiMulti.addAP("Jun-Home-AP", "takehiro");
+  wifiMulti.addAP("Jun-FS020W", "takehiro");
+  wifiMulti.addAP("Jun-Moto-Z2-Play", "takehiro");
+  LOGD(TAG, "going to scann WiFi");
+  wifiScann();
   wifiConnect();
   LOGD(TAG, "WiFi setup done");
 
   // setup DateTime
+  LOGD(TAG, "Going to setup date");
   setupDateTime();
 
   // setup webAPIs
@@ -228,6 +286,9 @@ void setup()
   server.on("/getValues", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send_P(200, "text/html", getValues().c_str()); });
 
+  server.on("/disconnectBLE", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send_P(200, "text/plain", disconnectBLE().c_str()); });
+
   server.begin();
 
   // init ambient channelID and key
@@ -238,93 +299,38 @@ void setup()
   bmsSerial.begin(9600, SERIAL_8N1, 21, 22);
   myBms.bleStartup();
   LOGD(TAG, "BLE setup done");
+
+  // initalize pack volt not to disconnect WiFi
+  packBasicInfo.Volts = 15000;
 }
 
 void loop()
 {
   myBms.bleRequestData();
   if (newPacketReceived == true)
-	{
-		LOGD(TAG, "new pcaket received");
-    //showInfoLcd;
-		myBms.printBasicInfo();
+  {
+    LOGD(TAG, "new pcaket received");
+    // showInfoLcd;
+    myBms.printBasicInfo();
     LOGD(TAG, "Pack Voltage: " + String(packBasicInfo.Volts));
     LOGD(TAG, "BalanceCodeLow: " + String(packBasicInfo.BalanceCodeLow));
     LOGD(TAG, "MosfetStatus: " + String(packBasicInfo.MosfetStatus));
-		myBms.printCellInfo();
-	}
-  /*
-  if (millis() - SerialLastLoad >= powerMeasurementInterval)
+    LOGD(TAG, "CellAvg: " + String(packCellInfo.CellAvg));
+    LOGD(TAG, "CellMedian: " + String(packCellInfo.CellMedian));
+    myBms.printCellInfo();
+  }
+  if (packBasicInfo.Volts <= sleepVoltage && WiFi.isConnected())
   {
-    SerialLastLoad = millis();
-    if (debugCtrl)
-    {
-      batteryCurrent = rand() % 4000;
-      batteryChargePercentage = rand() % 100;
-      batteryTemp1 = rand() % 500;
-      batteryTemp2 = rand() % 500;
-      batteryCycleCount = 10;
-      batteryVoltage = rand() % 1600;
-      cellInfo.NumOfCells = 4;
-      for (int i = 0; i < cellInfo.NumOfCells; i++)
-      {
-        cellInfo.CellVolt[i] = rand() % 4000;
-      }
-      cellInfo.CellDiff = rand() % 1000;
-    }
-    else if (myBms.readBmsData())
-    {
-      batteryCurrent = myBms.getCurrent();
-      batteryChargePercentage = myBms.getChargePercentage();
-      batteryTemp1 = myBms.getTemp1();
-      batteryTemp2 = myBms.getTemp2();
-      batteryCycleCount = myBms.getCycle();
-      batteryVoltage = myBms.getVoltage();
-      mosFet = myBms.getMosfet();
-      chargeStatus = mosFet & 0b00000001;
-      dischargeStatus = mosFet & 0b00000010;
-      cellBalance = myBms.getCellBalance();
-      cellBalance1 = cellBalance & 0b00000001;
-      cellBalance2 = cellBalance & 0b00000010;
-      cellBalanceList[1] = cellBalance & 1 << 1;
-      cellBalanceList[1] = cellBalance & 1 << 1;
-      for (int i = 0; i < cellInfo.NumOfCells; i++)
-      {
-        cellBalanceList[i] = cellBalance & 1 << i;
-      }
-
-      String logText = +"Current: " + String(batteryCurrent) + ", ChargePercentage: " + String(batteryChargePercentage);
-      logText = +", Temp1: " + String(batteryTemp1) + ", Temp2: " + String(batteryTemp2);
-      logText = +", Voltage: " + String(batteryVoltage);
-      logText = +", mosFet: " + String(mosFet);
-      logText = +", chargeStatus: " + String(chargeStatus);
-      logText = +", dischargeStatus: " + String(dischargeStatus);
-      logText = +", cellBalance2: " + String(cellBalanceList[1]);
-      logText = +", cellBalance: " + String(cellBalance);
-      LOGD(TAG, logText);
-      if (myBms.readPackData() == true)
-      {
-        cellInfo = myBms.getPackCellInfo();
-      }
-      cellDiffVoltage = cellInfo.CellDiff;
-      if (batteryVoltage <= sleepVoltage && WiFi.isConnected())
-      {
-        LOGD(TAG, "disconnecting WiFi, batteryVoltage: " + String(batteryVoltage, 0));
-        WiFi.disconnect(true);
-        digitalWrite(BLUELED, LOW);
-        ambientSendInterval = ambientSendIntervalBase * 10;
-      }
-      if (batteryVoltage > sleepVoltage && !WiFi.isConnected())
-      {
-        wifiConnect();
-        LOGD(TAG, "woke up and WiFi reconnected, batteryVoltage: " + String(batteryVoltage));
-        ambientSendInterval = ambientSendIntervalBase;
-      }
-    }
-    else
-    {
-      LOGD(TAG, "myBms.readBmsData() failed");
-    }
+    LOGD(TAG, "disconnecting WiFi, batteryVoltage: " + String(packBasicInfo.Volts) + " <= " + String(sleepVoltage));
+    WiFi.disconnect(true);
+    digitalWrite(BLUELED, LOW);
+    ambientSendInterval = ambientSendIntervalBase * 10;
+  }
+  if (packBasicInfo.Volts > sleepVoltage && !WiFi.isConnected())
+  {
+    wifiConnect();
+    LOGD(TAG, "woke up and WiFi reconnected, batteryVoltage: " + String(packBasicInfo.Volts) + " > " + String(sleepVoltage));
+    ambientSendInterval = ambientSendIntervalBase;
   }
   if (millis() - ambientlLastSent >= ambientSendInterval)
   {
@@ -332,18 +338,12 @@ void loop()
     {
       wifiConnect();
     }
-    ambient.set(1, batteryVoltage / 100.0f);
-    ambient.set(2, batteryCurrent / 100.0f);
-    ambient.set(3, cellDiffVoltage / 1.0f);
-    ambient.set(4, (batteryTemp1 + batteryTemp2) / 2 / 10.0f);
+    ambient.set(1, packBasicInfo.Volts / 1000.0f);
+    ambient.set(2, packBasicInfo.Amps / 1000.0f);
+    ambient.set(3, packCellInfo.CellDiff / 1.0f);
+    ambient.set(4, (packBasicInfo.Temp1 + packBasicInfo.Temp2) / 2 / 10.0f);
     ambient.send();
     ambientlLastSent = millis();
-    LOGD(TAG, "ambient sent, batteryVoltage: " + String(batteryVoltage) + ", batteryCurrent: " + String(batteryCurrent) + ", batteryTemp1: " + String(batteryTemp1) + ", batteryTemp2: " + String(batteryTemp2));
-    if (batteryVoltage <= sleepVoltage)
-    {
-      LOGD(TAG, "disconnecting WiFi, batteryVoltage: " + String(batteryVoltage, 0));
-      WiFi.disconnect(true);
-      digitalWrite(BLUELED, LOW);
-    }
-  }*/
+    LOGD(TAG, "ambient sent, batteryVoltage: " + String(packBasicInfo.Volts) + ", batteryCurrent: " + String(packBasicInfo.Amps) + ", batteryTemp1: " + String(packBasicInfo.Temp1) + ", batteryTemp2: " + String(packBasicInfo.Temp2));
+  }
 }
