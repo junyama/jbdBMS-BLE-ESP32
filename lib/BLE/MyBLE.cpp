@@ -5,12 +5,12 @@
 #include "ESPDateTime.h"
 
 #include "BLEDevice.h"
-#include "MyBLE.hpp"
+#include "MyDataTypes.h"
 
 #define commSerial Serial
 
 // HardwareSerial commSerial(0);
-HardwareSerial bmsSerial(1);
+// HardwareSerial bmsSerial(1);
 
 //---- global variables ----
 static boolean doConnect = false;
@@ -21,25 +21,25 @@ packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
 packEepromStruct packEeprom;       // here shall be the latest data got from BMS
 packCellInfoStruct packCellInfo;   // here shall be the latest data got from BMS
 
-const byte cBasicInfo3 = 3; // type of packet 3= basic info
-const byte cCellInfo4 = 4;  // type of packet 4= individual cell info
+static const byte cBasicInfo3 = 3; // type of packet 3= basic info
+static const byte cCellInfo4 = 4;  // type of packet 4= individual cell info
 
-unsigned long previousMillis = 0;
-const long interval = 2000;
+static unsigned long previousMillis = 0;
+static const long interval = 2000;
 
-bool toggle = false;
-bool newPacketReceived = false;
+static bool toggle = false;
+static bool newPacketReceived = false;
 
 //  ----- BLE stuff -----
 static BLERemoteCharacteristic *pRemoteCharacteristic;
 static BLEAdvertisedDevice *myDevice;
-BLERemoteService *pRemoteService;
+static BLERemoteService *pRemoteService;
 // The remote service we wish to connect to. Needs check/change when other BLE module used.
 static BLEUUID serviceUUID("0000ff00-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
 static BLEUUID charUUID_tx("0000ff02-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
 static BLEUUID charUUID_rx("0000ff01-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
 
-static String TAG = "GLOBAL";
+static const String TAG = "GLOBAL";
 static void LOGD(String tag, String text)
 {
     Serial.print("[" + DateTime.toString() + "] ");
@@ -345,7 +345,6 @@ private:
     const String TAG = "MyBLE";
     BLEClient *pClient;
 
-public:
     void bmsGetInfo3()
     {
         // TRACE;
@@ -367,6 +366,7 @@ public:
         // commSerial.println("Request info4 sent");
     }
 
+public:
     void printBasicInfo() // debug all data to uart
     {
         // TRACE;
@@ -477,7 +477,7 @@ public:
         if (pRemoteCharacteristic->canNotify())
             pRemoteCharacteristic->registerForNotify(notifyCallback);
 
-        BLE_client_connected = true;
+        return BLE_client_connected = true;
     }
 
     void disconnectFromServer() // does not work as intended, but automatically reconnected

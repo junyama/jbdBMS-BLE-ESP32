@@ -1,10 +1,3 @@
-/*
- * IncFile1.h
- *
- * Created: 6.3.2019 11:58:57
- *  Author: z003knyu
- */
-
 #ifndef mydatatypes_H_
 #define mydatatypes_H_
 
@@ -74,41 +67,3 @@ const int32_t c_packMaxWatt = 1250;
 const uint16_t c_cellMaxDisbalance = 1500; //200; // cell different by this value from cell median is getting violet (worst) color
 
 #endif /* mydatatypes_H_ */
-
-// Color definitions for 64k color mode
-// Bits 0..4 -> Blue 0..4
-// Bits 5..10 -> Green 0..5
-// Bits 11..15 -> Red 0..4
-
-#ifdef LCDDRIVER_TFT_eSPI
-#define TFT_BLACK 0x0000	   /*   0,   0,   0 */
-#define TFT_NAVY 0x000F		   /*   0,   0, 128 */
-#define TFT_DARKGREEN 0x03E0   /*   0, 128,   0 */
-#define TFT_DARKCYAN 0x03EF	/*   0, 128, 128 */
-#define TFT_MAROON 0x7800	  /* 128,   0,   0 */
-#define TFT_PURPLE 0x780F	  /* 128,   0, 128 */
-#define TFT_OLIVE 0x7BE0	   /* 128, 128,   0 */
-#define TFT_LIGHTGREY 0xC618   /* 192, 192, 192 */
-#define TFT_DARKGREY 0x7BEF	/* 128, 128, 128 */
-#define TFT_BLUE 0x001F		   /*   0,   0, 255 */
-#define TFT_GREEN 0x07E0	   /*   0, 255,   0 */
-#define TFT_CYAN 0x07FF		   /*   0, 255, 255 */
-#define TFT_RED 0xF800		   /* 255,   0,   0 */
-#define TFT_MAGENTA 0xF81F	 /* 255,   0, 255 */
-#define TFT_YELLOW 0xFFE0	  /* 255, 255,   0 */
-#define TFT_WHITE 0xFFFF	   /* 255, 255, 255 */
-#define TFT_ORANGE 0xFDA0	  /* 255, 180,   0 */
-#define TFT_GREENYELLOW 0xB7E0 /* 180, 255,   0 */
-#define TFT_PINK 0xFC9F
-#endif
-
-#ifdef LCDDRIVER_Adafruit_GFX
-#define TFT_BLACK 0x0000
-#define TFT_BLUE 0x001F
-#define TFT_RED 0xF800
-#define TFT_GREEN 0x07E0
-#define TFT_CYAN 0x07FF
-#define TFT_MAGENTA 0xF81F
-#define TFT_YELLOW 0xFFE0
-#define TFT_WHITE 0xFFFF
-#endif

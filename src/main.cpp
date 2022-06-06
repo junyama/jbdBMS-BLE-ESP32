@@ -3,7 +3,6 @@
 #include "ESPAsyncWebServer.h"
 
 #include <MyBLE.cpp>
-//#include "MyBMS.h"
 
 //#include <JbdBms.h>
 //#include <LittleFS.h>
@@ -17,7 +16,8 @@
 // debug cotrol
 const bool debugCtrl = false;
 const int verbose = 2;
-// const String TAG = "main";
+static const String TAG_ = "main";
+//static const String TAG = "main"; // error: redefinition of 'const String TAG'
 
 // Wi-Fi client
 // const char *ssidList[] = {"Jun-Home-AP", "Jun-FS020W"};
@@ -74,9 +74,9 @@ void setupDateTime()
   /** changed from 0.2.x **/
   DateTime.begin(15 * 1000 /* timeout param */);
   if (DateTime.isTimeValid())
-    LOGD(TAG, "DateTime setup done");
+    LOGD(TAG_, "DateTime setup done");
   else
-    LOGD(TAG, "Failed to get time from server.");
+    LOGD(TAG_, "Failed to get time from server.");
 }
 
 void wifiScann()
@@ -120,7 +120,7 @@ void wifiConnect()
     */
     String logText = "WiFi connected: " + WiFi.SSID();
     logText += " " + String(WiFi.RSSI());
-    LOGD(TAG, logText);
+    LOGD(TAG_, logText);
     Serial.print("IP: ");
     Serial.println(WiFi.localIP());
     digitalWrite(BLUELED, HIGH);
@@ -136,7 +136,7 @@ void wifiConnect2()
 {
   for (unsigned int i = 0; i < sizeof(ssidList); i++)
   {
-    LOGD(TAG, "Connecting to " + String(ssidList[i]));
+    LOGD(TAG_, "Connecting to " + String(ssidList[i]));
     WiFi.begin(ssidList[i], password);
 
     // try to connect AP in 10 sec
@@ -145,7 +145,7 @@ void wifiConnect2()
       if (WiFi.status() == WL_CONNECTED)
       {
         Serial.println("");
-        LOGD(TAG, "WiFi connected");
+        LOGD(TAG_, "WiFi connected");
         break;
       }
       delay(1000);
@@ -157,13 +157,13 @@ void wifiConnect2()
       {
         Serial.print("IP: ");
         Serial.println(WiFi.localIP());
-        // LOGD(TAG, "IP: " + String(WiFi.localIP())); does not show 4 octets format
+        // LOGD(TAG_, "IP: " + String(WiFi.localIP())); does not show 4 octets format
       }
       digitalWrite(BLUELED, HIGH);
       break;
     }
-    LOGD(TAG, "");
-    LOGD(TAG, "Timeout");
+    LOGD(TAG_, "");
+    LOGD(TAG_, "Timeout");
   }
 }
 */
@@ -235,24 +235,24 @@ void setup()
   digitalWrite(BLUELED, LOW);
 
   // LITTLEFS
-  LOGD(TAG, "mounting LittleFS");
+  LOGD(TAG_, "mounting LittleFS");
   if (!LittleFS.begin(true))
   {
-    LOGD(TAG, "LittleFS mount failed");
+    LOGD(TAG_, "LittleFS mount failed");
     return;
   }
   else
   {
-    LOGD(TAG, "mounting succeeded");
+    LOGD(TAG_, "mounting succeeded");
     String logText = "Logging started, debug: " + String(debugCtrl);
     logText += ", verbose: " + String(verbose);
-    LOGD(TAG, logText);
-    LOGD(TAG, "LittleFS mount done");
+    LOGD(TAG_, logText);
+    LOGD(TAG_, "LittleFS mount done");
   }
 
   // Rand()
   if (debugCtrl)
-    LOGD(TAG, "RAND_MAX = " + String(RAND_MAX));
+    LOGD(TAG_, "RAND_MAX = " + String(RAND_MAX));
 
   // setup WiFi
   WiFi.mode(WIFI_STA);
@@ -261,13 +261,13 @@ void setup()
   wifiMulti.addAP("Jun-Home-AP", "takehiro");
   wifiMulti.addAP("Jun-FS020W", "takehiro");
   wifiMulti.addAP("Jun-Moto-Z2-Play", "takehiro");
-  LOGD(TAG, "going to scann WiFi");
+  LOGD(TAG_, "going to scann WiFi");
   wifiScann();
   wifiConnect();
-  LOGD(TAG, "WiFi setup done");
+  LOGD(TAG_, "WiFi setup done");
 
   // setup DateTime
-  LOGD(TAG, "Going to setup date");
+  LOGD(TAG_, "Going to setup date");
   setupDateTime();
 
   // setup webAPIs
@@ -293,12 +293,12 @@ void setup()
 
   // init ambient channelID and key
   ambient.begin(channelId, writeKey, &client);
-  LOGD(TAG, "ambient setup done");
+  LOGD(TAG_, "ambient setup done");
 
   // setup BLE
-  bmsSerial.begin(9600, SERIAL_8N1, 21, 22);
+  //bmsSerial.begin(9600, SERIAL_8N1, 21, 22);
   myBms.bleStartup();
-  LOGD(TAG, "BLE setup done");
+  LOGD(TAG_, "BLE setup done");
 
   // initalize pack volt not to disconnect WiFi
   packBasicInfo.Volts = 15000;
@@ -309,19 +309,19 @@ void loop()
   myBms.bleRequestData();
   if (newPacketReceived == true)
   {
-    LOGD(TAG, "new pcaket received");
+    LOGD(TAG_, "new pcaket received");
     // showInfoLcd;
     myBms.printBasicInfo();
-    LOGD(TAG, "Pack Voltage: " + String(packBasicInfo.Volts));
-    LOGD(TAG, "BalanceCodeLow: " + String(packBasicInfo.BalanceCodeLow));
-    LOGD(TAG, "MosfetStatus: " + String(packBasicInfo.MosfetStatus));
-    LOGD(TAG, "CellAvg: " + String(packCellInfo.CellAvg));
-    LOGD(TAG, "CellMedian: " + String(packCellInfo.CellMedian));
+    LOGD(TAG_, "Pack Voltage: " + String(packBasicInfo.Volts));
+    LOGD(TAG_, "BalanceCodeLow: " + String(packBasicInfo.BalanceCodeLow));
+    LOGD(TAG_, "MosfetStatus: " + String(packBasicInfo.MosfetStatus));
+    LOGD(TAG_, "CellAvg: " + String(packCellInfo.CellAvg));
+    LOGD(TAG_, "CellMedian: " + String(packCellInfo.CellMedian));
     myBms.printCellInfo();
   }
   if (packBasicInfo.Volts <= sleepVoltage && WiFi.isConnected())
   {
-    LOGD(TAG, "disconnecting WiFi, batteryVoltage: " + String(packBasicInfo.Volts) + " <= " + String(sleepVoltage));
+    LOGD(TAG_, "disconnecting WiFi, batteryVoltage: " + String(packBasicInfo.Volts) + " <= " + String(sleepVoltage));
     WiFi.disconnect(true);
     digitalWrite(BLUELED, LOW);
     ambientSendInterval = ambientSendIntervalBase * 10;
@@ -329,7 +329,7 @@ void loop()
   if (packBasicInfo.Volts > sleepVoltage && !WiFi.isConnected())
   {
     wifiConnect();
-    LOGD(TAG, "woke up and WiFi reconnected, batteryVoltage: " + String(packBasicInfo.Volts) + " > " + String(sleepVoltage));
+    LOGD(TAG_, "woke up and WiFi reconnected, batteryVoltage: " + String(packBasicInfo.Volts) + " > " + String(sleepVoltage));
     ambientSendInterval = ambientSendIntervalBase;
   }
   if (millis() - ambientlLastSent >= ambientSendInterval)
@@ -344,6 +344,6 @@ void loop()
     ambient.set(4, (packBasicInfo.Temp1 + packBasicInfo.Temp2) / 2 / 10.0f);
     ambient.send();
     ambientlLastSent = millis();
-    LOGD(TAG, "ambient sent, batteryVoltage: " + String(packBasicInfo.Volts) + ", batteryCurrent: " + String(packBasicInfo.Amps) + ", batteryTemp1: " + String(packBasicInfo.Temp1) + ", batteryTemp2: " + String(packBasicInfo.Temp2));
+    LOGD(TAG_, "ambient sent, batteryVoltage: " + String(packBasicInfo.Volts) + ", batteryCurrent: " + String(packBasicInfo.Amps) + ", batteryTemp1: " + String(packBasicInfo.Temp1) + ", batteryTemp2: " + String(packBasicInfo.Temp2));
   }
 }
