@@ -2,27 +2,20 @@
 #include <WiFiMulti.h>
 #include "ESPAsyncWebServer.h"
 
-#include <MyBLE.cpp>
+#include <MyBLE.hpp>
 
 //#include <JbdBms.h>
 //#include <LittleFS.h>
 #include "SPIFFS.h"
 #define LittleFS SPIFFS
 #include <Ambient.h>
-#include "ESPDateTime.h"
 
 #define BLUELED 32
 
-// debug cotrol
-const bool debugCtrl = false;
-const int verbose = 2;
 static const String TAG_ = "main";
 //static const String TAG = "main"; // error: redefinition of 'const String TAG'
 
 // Wi-Fi client
-// const char *ssidList[] = {"Jun-Home-AP", "Jun-FS020W"};
-//const char *ssidList[] = {"Jun-Home-AP", "Jun-FS020W"};
-//const char *password = "takehiro"; // WIFI password
 WiFiClient client;
 
 // WiFiMulti
@@ -58,7 +51,7 @@ unsigned int ambientSendInterval = ambientSendIntervalBase;
 Ambient ambient;
 
 // sleep control
-float sleepVoltage = 13.299 * 1000; // mV
+float sleepVoltage = 13.199 * 1000; // mV
 
 // local functions definitions
 
@@ -112,12 +105,6 @@ void wifiConnect()
   // if the connection to the stongest hotstop is lost, it will connect to the next network on the list
   if (wifiMulti.run(connectTimeoutMs) == WL_CONNECTED)
   {
-    /*
-    Serial.print("WiFi connected: ");
-    Serial.print(WiFi.SSID());
-    Serial.print(" ");
-    Serial.println(WiFi.RSSI());
-    */
     String logText = "WiFi connected: " + WiFi.SSID();
     logText += " " + String(WiFi.RSSI());
     LOGD(TAG_, logText);
@@ -130,43 +117,6 @@ void wifiConnect()
     Serial.println("WiFi not connected!");
   }
 }
-
-/*
-void wifiConnect2()
-{
-  for (unsigned int i = 0; i < sizeof(ssidList); i++)
-  {
-    LOGD(TAG_, "Connecting to " + String(ssidList[i]));
-    WiFi.begin(ssidList[i], password);
-
-    // try to connect AP in 10 sec
-    for (int j = 1; j < 10; j++)
-    {
-      if (WiFi.status() == WL_CONNECTED)
-      {
-        Serial.println("");
-        LOGD(TAG_, "WiFi connected");
-        break;
-      }
-      delay(1000);
-      Serial.print(".");
-    }
-    if (WiFi.isConnected())
-    {
-      if (verbose > 1)
-      {
-        Serial.print("IP: ");
-        Serial.println(WiFi.localIP());
-        // LOGD(TAG_, "IP: " + String(WiFi.localIP())); does not show 4 octets format
-      }
-      digitalWrite(BLUELED, HIGH);
-      break;
-    }
-    LOGD(TAG_, "");
-    LOGD(TAG_, "Timeout");
-  }
-}
-*/
 
 String getValues()
 {
@@ -228,7 +178,7 @@ String disconnectBLE()
 
 void setup()
 {
-  Serial.begin(9600); // Standard hardware serial port
+  Serial.begin(115200); // Standard hardware serial port
 
   // LED setup
   pinMode(BLUELED, OUTPUT);
@@ -238,21 +188,13 @@ void setup()
   LOGD(TAG_, "mounting LittleFS");
   if (!LittleFS.begin(true))
   {
-    LOGD(TAG_, "LittleFS mount failed");
+    LOGD(TAG_, "SPIFFS mount failed");
     return;
   }
   else
   {
-    LOGD(TAG_, "mounting succeeded");
-    String logText = "Logging started, debug: " + String(debugCtrl);
-    logText += ", verbose: " + String(verbose);
-    LOGD(TAG_, logText);
-    LOGD(TAG_, "LittleFS mount done");
+    LOGD(TAG_, "SPIFFS mount done");
   }
-
-  // Rand()
-  if (debugCtrl)
-    LOGD(TAG_, "RAND_MAX = " + String(RAND_MAX));
 
   // setup WiFi
   WiFi.mode(WIFI_STA);
@@ -263,6 +205,7 @@ void setup()
   wifiMulti.addAP("Jun-Moto-Z2-Play", "takehiro");
   LOGD(TAG_, "going to scann WiFi");
   wifiScann();
+  LOGD(TAG_, "going to connect WiFi");
   wifiConnect();
   LOGD(TAG_, "WiFi setup done");
 
@@ -296,7 +239,6 @@ void setup()
   LOGD(TAG_, "ambient setup done");
 
   // setup BLE
-  //bmsSerial.begin(9600, SERIAL_8N1, 21, 22);
   myBms.bleStartup();
   LOGD(TAG_, "BLE setup done");
 
