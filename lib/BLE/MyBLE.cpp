@@ -2,6 +2,8 @@
 #define MY_BLE_CPP_
 
 #include "MyBLE.hpp"
+#include "MyAdvertisedDeviceCallbacks.hpp"
+#include "MyClientCallback.hpp"
 
 #define commSerial Serial
 
@@ -21,56 +23,18 @@ packCellInfoStruct packCellInfo;   // here shall be the latest data got from BMS
 bool newPacketReceived = false;
 
 //  ----- BLE stuff -----
-BLERemoteCharacteristic *pRemoteCharacteristic;
+//BLERemoteCharacteristic *pRemoteCharacteristic; //m
 BLEAdvertisedDevice *myDevice;
-BLERemoteService *pRemoteService;
+//BLERemoteService *pRemoteService; //m
 // The remote service we wish to connect to. Needs check/change when other BLE module used.
 BLEUUID serviceUUID("0000ff00-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
-BLEUUID charUUID_tx("0000ff02-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
-BLEUUID charUUID_rx("0000ff01-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
-
-// const String TAG = "GLOBAL";
-
-MyAdvertisedDeviceCallbacks::MyAdvertisedDeviceCallbacks()
-    : TAG("MyAdvertisedDeviceCallbacks")
-{
-}
-
-void MyAdvertisedDeviceCallbacks::onResult(BLEAdvertisedDevice advertisedDevice)
-{
-    LOGD(TAG, "BLE Advertised Device found: " + String(advertisedDevice.toString().c_str()));
-    // LOGD(TAG, advertisedDevice.toString().c_str());
-
-    // We have found a device, let us now see if it contains the service we are looking for.
-    if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(serviceUUID))
-    {
-        LOGD(TAG, "Found our server");
-        BLEDevice::getScan()->stop();
-        myDevice = new BLEAdvertisedDevice(advertisedDevice);
-        doConnect = true;
-        doScan = true;
-
-    } // Found our server
-}
-
-MyClientCallback::MyClientCallback()
-    : TAG("MyClientCallback")
-{
-}
-
-void MyClientCallback::onConnect(BLEClient *pclient)
-{
-}
-
-void MyClientCallback::onDisconnect(BLEClient *pclient)
-{
-    BLE_client_connected = false;
-    LOGD(TAG, "onDisconnect");
-    // lcdDisconnect();
-}
+//BLEUUID charUUID_tx("0000ff02-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module //m
+//BLEUUID charUUID_rx("0000ff01-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module //m
 
 MyBLE::MyBLE()
     : TAG("MyBLE"), previousMillis(0), interval(2000), toggle(false)
+    , charUUID_tx("0000ff02-0000-1000-8000-00805f9b34fb")
+    , charUUID_rx("0000ff01-0000-1000-8000-00805f9b34fb")
 {
 }
 

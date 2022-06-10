@@ -1,7 +1,7 @@
 #ifndef MY_ADVERTISE_DEVICE_CPP
 #define MY_ADVERTISE_DEVICE_CPP
 
-#include "MyBLE.hpp"
+#include "MyAdvertisedDeviceCallbacks.hpp"
 
 MyAdvertisedDeviceCallbacks::MyAdvertisedDeviceCallbacks()
     : TAG("MyAdvertisedDeviceCallbacks")

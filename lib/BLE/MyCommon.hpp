@@ -80,13 +80,13 @@ extern boolean BLE_client_connected;
 extern bool newPacketReceived;
 
 //  ----- BLE stuff -----
-extern BLERemoteCharacteristic *pRemoteCharacteristic;
+//extern BLERemoteCharacteristic *pRemoteCharacteristic;
 extern BLEAdvertisedDevice *myDevice;
-extern BLERemoteService *pRemoteService;
+//extern BLERemoteService *pRemoteService;
 // The remote service we wish to connect to. Needs check/change when other BLE module used.
 extern BLEUUID serviceUUID; // xiaoxiang bms original module
-extern BLEUUID charUUID_tx; // xiaoxiang bms original module
-extern BLEUUID charUUID_rx; // xiaoxiang bms original module
+//extern BLEUUID charUUID_tx; // xiaoxiang bms original module
+//extern BLEUUID charUUID_rx; // xiaoxiang bms original module
 
 extern const String TAG;
 extern void LOGD(String tag, String text);

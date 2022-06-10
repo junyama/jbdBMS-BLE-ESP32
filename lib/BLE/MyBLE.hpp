@@ -4,6 +4,7 @@
 #include "MyCommon.hpp"
 #include "BLEDevice.h"
 
+/*
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 { // this is called by some underlying magic
   // Called for each advertising BLE server.
@@ -25,6 +26,7 @@ private:
 public:
 	MyClientCallback();
 };
+*/
 
 class MyBLE
 {
@@ -38,6 +40,11 @@ private:
 	void bmsGetInfo4();
 	bool connectToServer();
 	void sendCommand(uint8_t *data, uint32_t dataLen);
+
+	BLERemoteCharacteristic *pRemoteCharacteristic; // m
+	BLERemoteService *pRemoteService;				// m
+	BLEUUID charUUID_tx;							// xiaoxiang bms original module //m
+	BLEUUID charUUID_rx;							// xiaoxiang bms original module //m
 
 public:
 	MyBLE();
