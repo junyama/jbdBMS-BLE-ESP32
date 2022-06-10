@@ -4,30 +4,6 @@
 #include "MyCommon.hpp"
 #include "BLEDevice.h"
 
-/*
-class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
-{ // this is called by some underlying magic
-  // Called for each advertising BLE server.
-private:
-	const String TAG;
-	void onResult(BLEAdvertisedDevice advertisedDevice);
-
-public:
-	MyAdvertisedDeviceCallbacks();
-};
-
-class MyClientCallback : public BLEClientCallbacks
-{ // this is called on connect / disconnect by some underlying magic+
-private:
-	const String TAG;
-	void onConnect(BLEClient *pclient);
-	void onDisconnect(BLEClient *pclient);
-
-public:
-	MyClientCallback();
-};
-*/
-
 class MyBLE
 {
 private:

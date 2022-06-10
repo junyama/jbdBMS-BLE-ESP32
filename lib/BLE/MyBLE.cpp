@@ -161,7 +161,7 @@ bool MyBLE::connectToServer()
     }
 
     if (pRemoteCharacteristic->canNotify())
-        pRemoteCharacteristic->registerForNotify(notifyCallback);
+        pRemoteCharacteristic->registerForNotify(MyDataProcess::notifyCallback);
 
     return BLE_client_connected = true;
 }

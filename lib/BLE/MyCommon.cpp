@@ -13,7 +13,14 @@ void LOGD(String tag, String text)
     Serial.println(text);
 }
 
-int16_t two_ints_into16(int highbyte, int lowbyte) // turns two bytes into a single long integer
+const String MyDataProcess::TAG = "MyDataProcess";
+const int32_t MyDataProcess::c_cellNominalVoltage = 3700;
+const uint16_t MyDataProcess::c_cellAbsMin = 3000;
+const uint16_t MyDataProcess::c_cellAbsMax = 4200;
+const int32_t MyDataProcess::c_packMaxWatt = 1250;
+const uint16_t MyDataProcess::c_cellMaxDisbalance = 1500;
+
+int16_t MyDataProcess::two_ints_into16(int highbyte, int lowbyte) // turns two bytes into a single long integer
 {
     // TRACE;
     int16_t result = (highbyte);
@@ -22,7 +29,7 @@ int16_t two_ints_into16(int highbyte, int lowbyte) // turns two bytes into a sin
     return result;
 }
 
-bool processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned int dataLen)
+bool MyDataProcess::processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned int dataLen)
 {
     // TRACE;
     //  Expected data len
@@ -52,7 +59,7 @@ bool processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned int data
     return true;
 }
 
-bool processCellInfo(packCellInfoStruct *output, byte *data, unsigned int dataLen)
+bool MyDataProcess::processCellInfo(packCellInfoStruct *output, byte *data, unsigned int dataLen)
 {
     // TRACE;
     uint16_t _cellSum;
@@ -126,7 +133,7 @@ bool processCellInfo(packCellInfoStruct *output, byte *data, unsigned int dataLe
     return true;
 }
 
-bool isPacketValid(byte *packet) // check if packet is valid
+bool MyDataProcess::isPacketValid(byte *packet) // check if packet is valid
 {
     // TRACE;
     if (packet == nullptr)
@@ -170,7 +177,7 @@ bool isPacketValid(byte *packet) // check if packet is valid
     }
 }
 
-bool bmsProcessPacket(byte *packet)
+bool MyDataProcess::bmsProcessPacket(byte *packet)
 {
     const byte cBasicInfo3 = 3; // type of packet 3= basic info
     const byte cCellInfo4 = 4;  // type of packet 4= individual cell info
@@ -215,7 +222,7 @@ bool bmsProcessPacket(byte *packet)
     return result;
 }
 
-bool bleCollectPacket(char *data, uint32_t dataSize) // reconstruct packet from BLE incomming data, called by notifyCallback function
+bool MyDataProcess::bleCollectPacket(char *data, uint32_t dataSize) // reconstruct packet from BLE incomming data, called by notifyCallback function
 {
     // TRACE;
     static uint8_t packetstate = 0; // 0 - empty, 1 - first half of packet received, 2- second half of packet received
@@ -257,7 +264,7 @@ bool bleCollectPacket(char *data, uint32_t dataSize) // reconstruct packet from 
     return retVal;
 }
 
-void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify) // this is called when BLE server sents data via notofication
+void MyDataProcess::notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify) // this is called when BLE server sents data via notofication
 {
     // TRACE;
     // hexDump((char*)pData, length);
