@@ -95,6 +95,9 @@ extern bool processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned i
 extern bool processCellInfo(packCellInfoStruct *output, byte *data, unsigned int dataLen);
 extern bool isPacketValid(byte *packet); // check if packet is valid
 
+extern bool bmsProcessPacket(byte *packet);
+extern bool bleCollectPacket(char *data, uint32_t dataSize); // reconstruct packet from BLE incomming data, called by notifyCallback function
+extern void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify); // this is called when BLE server sents data via notofication
 
 
 #endif /* MY_COMMON_HPP */

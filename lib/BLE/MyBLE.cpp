@@ -11,11 +11,8 @@ boolean BLE_client_connected = false;
 boolean doScan = false;
 
 packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
-packEepromStruct packEeprom;       // here shall be the latest data got from BMS
+//packEepromStruct packEeprom;       // here shall be the latest data got from BMS
 packCellInfoStruct packCellInfo;   // here shall be the latest data got from BMS
-
-const byte cBasicInfo3 = 3; // type of packet 3= basic info
-const byte cCellInfo4 = 4;  // type of packet 4= individual cell info
 
 // static unsigned long previousMillis = 0;
 // static const long interval = 2000;
@@ -32,105 +29,7 @@ BLEUUID serviceUUID("0000ff00-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms or
 BLEUUID charUUID_tx("0000ff02-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
 BLEUUID charUUID_rx("0000ff01-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
 
-//const String TAG = "GLOBAL";
-
-
-
-
-
-
-
-bool bmsProcessPacket(byte *packet)
-{
-    // TRACE;
-    bool isValid = isPacketValid(packet);
-
-    if (isValid != true)
-    {
-        LOGD(TAG, "Invalid packer received");
-        return false;
-    }
-
-    bmsPacketHeaderStruct *pHeader = (bmsPacketHeaderStruct *)packet;
-    byte *data = packet + sizeof(bmsPacketHeaderStruct); // TODO Fix this ugly hack
-    unsigned int dataLen = pHeader->dataLen;
-
-    bool result = false;
-
-    // |Decision based on pac ket type (info3 or info4)
-    switch (pHeader->type)
-    {
-    case cBasicInfo3:
-    {
-        // Process basic info
-        result = processBasicInfo(&packBasicInfo, data, dataLen);
-        newPacketReceived = true;
-        break;
-    }
-
-    case cCellInfo4:
-    {
-        result = processCellInfo(&packCellInfo, data, dataLen);
-        newPacketReceived = true;
-        break;
-    }
-
-    default:
-        result = false;
-        commSerial.printf("Unsupported packet type detected. Type: %d", pHeader->type);
-    }
-
-    return result;
-}
-
-bool bleCollectPacket(char *data, uint32_t dataSize) // reconstruct packet from BLE incomming data, called by notifyCallback function
-{
-    // TRACE;
-    static uint8_t packetstate = 0; // 0 - empty, 1 - first half of packet received, 2- second half of packet received
-    static uint8_t packetbuff[40] = {0x0};
-    static uint32_t previousDataSize = 0;
-    bool retVal = false;
-    // hexDump(data,dataSize);
-
-    if (data[0] == 0xdd && packetstate == 0) // probably got 1st half of packet
-    {
-        packetstate = 1;
-        previousDataSize = dataSize;
-        for (uint8_t i = 0; i < dataSize; i++)
-        {
-            packetbuff[i] = data[i];
-        }
-        retVal = false;
-    }
-
-    if (data[dataSize - 1] == 0x77 && packetstate == 1) // probably got 2nd half of the packet
-    {
-        packetstate = 2;
-        for (uint8_t i = 0; i < dataSize; i++)
-        {
-            packetbuff[i + previousDataSize] = data[i];
-        }
-        retVal = false;
-    }
-
-    if (packetstate == 2) // got full packet
-    {
-        uint8_t packet[dataSize + previousDataSize];
-        memcpy(packet, packetbuff, dataSize + previousDataSize);
-
-        bmsProcessPacket(packet); // pass pointer to retrieved packet to processing function
-        packetstate = 0;
-        retVal = true;
-    }
-    return retVal;
-}
-
-void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify) // this is called when BLE server sents data via notofication
-{
-    // TRACE;
-    // hexDump((char*)pData, length);
-    bleCollectPacket((char *)pData, length);
-}
+// const String TAG = "GLOBAL";
 
 MyAdvertisedDeviceCallbacks::MyAdvertisedDeviceCallbacks()
     : TAG("MyAdvertisedDeviceCallbacks")
