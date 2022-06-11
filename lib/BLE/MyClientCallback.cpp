@@ -3,10 +3,7 @@
 
 #include "MyClientCallback.hpp"
 
-MyClientCallback::MyClientCallback()
-    : TAG("MyClientCallback")
-{
-}
+const String MyClientCallback::TAG = "MyClientCallback";
 
 void MyClientCallback::onConnect(BLEClient *pclient)
 {

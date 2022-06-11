@@ -1,15 +1,16 @@
 #ifndef MY_BLE_HPP
 #define MY_BLE_HPP
 
-#include "MyCommon.hpp"
+#include "MyDataProcess.hpp"
 #include "BLEDevice.h"
 
 class MyBLE
 {
 private:
-	const String TAG;
+	static const String TAG;
+	static const long interval;
+
 	unsigned long previousMillis;
-	const long interval;
 	bool toggle;
 	BLEClient *pClient;
 	void bmsGetInfo3();

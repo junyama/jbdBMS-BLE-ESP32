@@ -3,10 +3,7 @@
 
 #include "MyAdvertisedDeviceCallbacks.hpp"
 
-MyAdvertisedDeviceCallbacks::MyAdvertisedDeviceCallbacks()
-    : TAG("MyAdvertisedDeviceCallbacks")
-{
-}
+const String MyAdvertisedDeviceCallbacks::TAG = "MyAdvertisedDeviceCallbacks";
 
 void MyAdvertisedDeviceCallbacks::onResult(BLEAdvertisedDevice advertisedDevice)
 {

@@ -1,5 +1,5 @@
-#ifndef MY_COMMON_HPP
-#define MY_COMMON_HPP
+#ifndef MY_DATA_PROCESS_HPP
+#define MY_DATA_PROCESS_HPP
 
 #include <Arduino.h>
 #include "BLEDevice.h"
@@ -72,10 +72,9 @@ extern boolean BLE_client_connected;
 extern boolean doScan;
 
 extern packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
-extern packEepromStruct packEeprom;		  // here shall be the latest data got from BMS
+//extern packEepromStruct packEeprom;		  // here shall be the latest data got from BMS
 extern packCellInfoStruct packCellInfo;	  // here shall be the latest data got from BMS
 
-extern boolean BLE_client_connected;
 extern bool newPacketReceived;
 
 //  ----- BLE stuff -----
@@ -87,7 +86,7 @@ extern BLEUUID serviceUUID; // xiaoxiang bms original module
 // extern BLEUUID charUUID_tx; // xiaoxiang bms original module
 // extern BLEUUID charUUID_rx; // xiaoxiang bms original module
 
-extern const String TAG;
+//extern const String TAG;
 extern void LOGD(String tag, String text);
 //extern int16_t two_ints_into16(int highbyte, int lowbyte); // turns two bytes into a single long integer
 // extern bool processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned int dataLen);
@@ -120,4 +119,4 @@ public:
 	static bool bleCollectPacket(char *data, uint32_t dataSize); // reconstruct packet from BLE incomming data, called by notifyCallback function
 };
 
-#endif /* MY_COMMON_HPP */
+#endif /* MY_DATA_PROCESS_HPP */

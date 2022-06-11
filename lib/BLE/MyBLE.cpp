@@ -32,11 +32,14 @@ BLEUUID serviceUUID("0000ff00-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms or
 //BLEUUID charUUID_rx("0000ff01-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module //m
 
 MyBLE::MyBLE()
-    : TAG("MyBLE"), previousMillis(0), interval(2000), toggle(false)
+    : /* TAG("MyBLE"), */ previousMillis(0), /* interval(2000),*/ toggle(false)
     , charUUID_tx("0000ff02-0000-1000-8000-00805f9b34fb")
     , charUUID_rx("0000ff01-0000-1000-8000-00805f9b34fb")
 {
 }
+
+const String MyBLE::TAG = "MyBLE";
+const long MyBLE::interval = 2000;
 
 void MyBLE::bmsGetInfo3()
 {

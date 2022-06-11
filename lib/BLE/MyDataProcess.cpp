@@ -1,10 +1,8 @@
-#ifndef MY_COMMON_CPP
-#define MY_COMMON_CPP
+#ifndef MY_DATA_PROCESS_CPP
+#define MY_DATA_PROCESS_CPP
 
-#include "MyCommon.hpp"
+#include "MyDataProcess.hpp"
 #include "ESPDateTime.h"
-
-const String TAG = "MyCommon";
 
 void LOGD(String tag, String text)
 {
@@ -271,4 +269,4 @@ void MyDataProcess::notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteri
     bleCollectPacket((char *)pData, length);
 }
 
-#endif /* MY_COMMON_CPP */
+#endif /* MY_DATA_PROCESS_CPP */
