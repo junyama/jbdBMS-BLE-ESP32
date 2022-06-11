@@ -43,17 +43,17 @@ bool chargeStatus, dischargeStatus;
 // bool cellBalance1, cellBalance2, cellBalance3, cellBalance4;
 
 // Ambient service
-// const unsigned int channelId = 50366; //Jun BMS (ESP32)
-const unsigned int channelId = 8630; // Battery Power Meter
-// const char *writeKey = "ccb476294fe16acd";
-const char *writeKey = "b473180b50bf1709";
+const unsigned int channelId = 50366; //Jun BMS (ESP32)
+//const unsigned int channelId = 8630; // Battery Power Meter
+const char *writeKey = "ccb476294fe16acd";
+//const char *writeKey = "b473180b50bf1709";
 unsigned long ambientlLastSent = 0;
 const unsigned int ambientSendIntervalBase = 60 * 1000; // milli sec
 unsigned int ambientSendInterval = ambientSendIntervalBase;
 Ambient ambient;
 
 // sleep control
-float sleepVoltage = 13.199 * 1000; // mV
+float sleepVoltage = 13.399 * 1000; // mV
 
 // local functions definitions
 
