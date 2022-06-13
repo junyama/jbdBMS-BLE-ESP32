@@ -29,7 +29,7 @@ AsyncWebServer server(80);
 
 // JbbBms
 // JbdBms myBms(&mySerial);
-MyBLE myBms;
+MyBLE myBLE;
 
 // some varialbles declaration and initalization
 // unsigned long SerialLastLoad = 0;
@@ -167,14 +167,15 @@ String getValues()
   jsonStr += ", \"cellMedian\": ";
   jsonStr += String(packCellInfo.CellMedian);
   jsonStr += ", \"BLEConnected\": ";
-  jsonStr += String(BLE_client_connected);
+  jsonStr += String(myBLE.myClientCallback->BLE_client_connected);
+  //jsonStr += String(BLE_client_connected);
   jsonStr += "}";
   return jsonStr;
 }
 
 String disconnectBLE()
 {
-  myBms.disconnectFromServer();
+  myBLE.disconnectFromServer();
   return "OK";
 }
 
@@ -241,7 +242,7 @@ void setup()
   LOGD(TAG_, "ambient setup done");
 
   // setup BLE
-  myBms.bleStartup();
+  myBLE.bleStartup();
   LOGD(TAG_, "BLE setup done");
 
   // initalize pack volt not to disconnect WiFi
@@ -250,18 +251,18 @@ void setup()
 
 void loop()
 {
-  myBms.bleRequestData();
+  myBLE.bleRequestData();
   if (newPacketReceived == true)
   {
     LOGD(TAG_, "new pcaket received");
     // showInfoLcd;
-    myBms.printBasicInfo();
+    myBLE.printBasicInfo();
     LOGD(TAG_, "Pack Voltage: " + String(packBasicInfo.Volts));
     LOGD(TAG_, "BalanceCodeLow: " + String(packBasicInfo.BalanceCodeLow));
     LOGD(TAG_, "MosfetStatus: " + String(packBasicInfo.MosfetStatus));
     LOGD(TAG_, "CellAvg: " + String(packCellInfo.CellAvg));
     LOGD(TAG_, "CellMedian: " + String(packCellInfo.CellMedian));
-    myBms.printCellInfo();
+    myBLE.printCellInfo();
   }
   if (packBasicInfo.Volts <= sleepVoltage && WiFi.isConnected())
   {

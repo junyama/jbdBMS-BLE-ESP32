@@ -3,6 +3,8 @@
 
 #include "MyDataProcess.hpp"
 #include "BLEDevice.h"
+#include "MyAdvertisedDeviceCallbacks.hpp"
+#include "MyClientCallback.hpp"
 
 class MyBLE
 {
@@ -20,10 +22,19 @@ private:
 
 	BLERemoteCharacteristic *pRemoteCharacteristic; // m
 	BLERemoteService *pRemoteService;				// m
+	BLEUUID serviceUUID;
 	BLEUUID charUUID_tx;							// xiaoxiang bms original module //m
 	BLEUUID charUUID_rx;							// xiaoxiang bms original module //m
 
+	//BLEAdvertisedDevice *myDevice;
+
 public:
+	MyAdvertisedDeviceCallbacks *myAdvertisedDeviceCallbacks;
+	MyClientCallback *myClientCallback; 
+
+	//packBasicInfoStruct packBasicInfo2; // here shall be the latest data got from BMS
+	//packCellInfoStruct packCellInfo2; // here shall be the latest data got from BMS
+
 	MyBLE();
 	void printBasicInfo(); // debug all data to uart
 	void printCellInfo();  // debug all data to uart

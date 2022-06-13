@@ -2,19 +2,19 @@
 #define MY_BLE_CPP_
 
 #include "MyBLE.hpp"
-#include "MyAdvertisedDeviceCallbacks.hpp"
-#include "MyClientCallback.hpp"
+//#include "MyAdvertisedDeviceCallbacks.hpp"
+//#include "MyClientCallback.hpp"
 
 #define commSerial Serial
 
 //---- global variables ----
-boolean doConnect = false;
-boolean BLE_client_connected = false;
-boolean doScan = false;
+//boolean doConnect = false;
+//boolean BLE_client_connected = false;
+//boolean doScan = false;
 
 packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
-//packEepromStruct packEeprom;       // here shall be the latest data got from BMS
-packCellInfoStruct packCellInfo;   // here shall be the latest data got from BMS
+// packEepromStruct packEeprom;       // here shall be the latest data got from BMS
+packCellInfoStruct packCellInfo; // here shall be the latest data got from BMS
 
 // static unsigned long previousMillis = 0;
 // static const long interval = 2000;
@@ -23,18 +23,16 @@ packCellInfoStruct packCellInfo;   // here shall be the latest data got from BMS
 bool newPacketReceived = false;
 
 //  ----- BLE stuff -----
-//BLERemoteCharacteristic *pRemoteCharacteristic; //m
-BLEAdvertisedDevice *myDevice;
-//BLERemoteService *pRemoteService; //m
-// The remote service we wish to connect to. Needs check/change when other BLE module used.
-BLEUUID serviceUUID("0000ff00-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
-//BLEUUID charUUID_tx("0000ff02-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module //m
-//BLEUUID charUUID_rx("0000ff01-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module //m
+// BLERemoteCharacteristic *pRemoteCharacteristic; //m
+//BLEAdvertisedDevice *myDevice;
+// BLERemoteService *pRemoteService; //m
+//  The remote service we wish to connect to. Needs check/change when other BLE module used.
+//BLEUUID serviceUUID("0000ff00-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
+// BLEUUID charUUID_tx("0000ff02-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module //m
+// BLEUUID charUUID_rx("0000ff01-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module //m
 
 MyBLE::MyBLE()
-    : /* TAG("MyBLE"), */ previousMillis(0), /* interval(2000),*/ toggle(false)
-    , charUUID_tx("0000ff02-0000-1000-8000-00805f9b34fb")
-    , charUUID_rx("0000ff01-0000-1000-8000-00805f9b34fb")
+    : /* TAG("MyBLE"), */ previousMillis(0), /* interval(2000),*/ toggle(false), serviceUUID("0000ff00-0000-1000-8000-00805f9b34fb"), charUUID_tx("0000ff02-0000-1000-8000-00805f9b34fb"), charUUID_rx("0000ff01-0000-1000-8000-00805f9b34fb")
 {
 }
 
@@ -106,7 +104,9 @@ void MyBLE::bleStartup()
     // have detected a new device.  Specify that we want active scanning and start the
     // scan to run for 5 seconds.
     BLEScan *pBLEScan = BLEDevice::getScan();
-    pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+    myAdvertisedDeviceCallbacks = new MyAdvertisedDeviceCallbacks(serviceUUID);
+    pBLEScan->setAdvertisedDeviceCallbacks(myAdvertisedDeviceCallbacks);
+    //pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
     pBLEScan->setInterval(1349);
     pBLEScan->setWindow(449);
     pBLEScan->setActiveScan(true);
@@ -116,17 +116,19 @@ void MyBLE::bleStartup()
 bool MyBLE::connectToServer()
 {
     // TRACE;
-    LOGD(TAG, "Forming a connection to " + String(myDevice->getAddress().toString().c_str()));
+    LOGD(TAG, "Forming a connection to " + String(myAdvertisedDeviceCallbacks->myDevice->getAddress().toString().c_str()));
     // lcdConnectingStatus(0);
     // LOGD(TAG, myDevice->getAddress().toString().c_str());
     pClient = BLEDevice::createClient();
     BLEClient *pClient = BLEDevice::createClient();
     LOGD(TAG, "Created client");
     // lcdConnectingStatus(1);
-    pClient->setClientCallbacks(new MyClientCallback());
+    myClientCallback = new MyClientCallback();
+    pClient->setClientCallbacks(myClientCallback);
+    //pClient->setClientCallbacks(new MyClientCallback());
 
     // Connect to the remove BLE Server.
-    pClient->connect(myDevice); // if you pass BLEAdvertisedDevice instead of address, it will be recognized type of peer device address (public or private)
+    pClient->connect(myAdvertisedDeviceCallbacks->myDevice); // if you pass BLEAdvertisedDevice instead of address, it will be recognized type of peer device address (public or private)
     LOGD(TAG, "Connected to server");
     // lcdConnectingStatus(2);
     //  Obtain a reference to the service we are after in the remote BLE server.
@@ -166,7 +168,7 @@ bool MyBLE::connectToServer()
     if (pRemoteCharacteristic->canNotify())
         pRemoteCharacteristic->registerForNotify(MyDataProcess::notifyCallback);
 
-    return BLE_client_connected = true;
+    return myClientCallback->BLE_client_connected = true;
 }
 
 void MyBLE::disconnectFromServer() // does not work as intended, but automatically reconnected
@@ -181,7 +183,7 @@ void MyBLE::bleRequestData()
     // If the flag "doConnect" is true then we have scanned for and found the desired
     // BLE Server with which we wish to connect.  Now we connect to it.  Once we are
     // connected we set the connected flag to be true.
-    if (doConnect == true)
+    if (myAdvertisedDeviceCallbacks->doConnect == true)
     {
         if (connectToServer())
         {
@@ -193,12 +195,12 @@ void MyBLE::bleRequestData()
             LOGD(TAG, "failed to connect to the BLE Server.");
             // lcdConnectionFailed();
         }
-        doConnect = false;
+        myAdvertisedDeviceCallbacks->doConnect = false;
     }
 
     // If we are connected to a peer BLE Server, update the characteristic each time we are reached
     // with the current time since boot.
-    if (BLE_client_connected == true)
+    if (myClientCallback->BLE_client_connected == true)
     {
 
         unsigned long currentMillis = millis();
@@ -225,7 +227,7 @@ void MyBLE::bleRequestData()
             toggle = !toggle;
         }
     }
-    else if (doScan)
+    else if (myAdvertisedDeviceCallbacks->doScan)
     {
         BLEDevice::getScan()->start(0); // this is just example to start scan after disconnect, most likely there is better way to do it in arduino
     }

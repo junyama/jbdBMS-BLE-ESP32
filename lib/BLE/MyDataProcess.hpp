@@ -40,6 +40,7 @@ typedef struct
 	uint32_t CellColorDisbalance[15]; // green cell == median, red/violet cell => median + c_cellMaxDisbalance
 } packCellInfoStruct;
 
+/*
 typedef struct
 {
 	uint16_t POVP;
@@ -53,6 +54,7 @@ typedef struct
 	uint16_t CHGOC;
 	uint16_t DSGOC;
 } packEepromStruct;
+*/
 
 //#define STRINGBUFFERSIZE 300
 // char stringBuffer[STRINGBUFFERSIZE];
@@ -67,9 +69,9 @@ typedef struct
 // const uint16_t c_cellMaxDisbalance = 1500; // 200; // cell different by this value from cell median is getting violet (worst) color
 
 //---- global variables ----
-extern boolean doConnect;
-extern boolean BLE_client_connected;
-extern boolean doScan;
+//extern boolean doConnect;
+//extern boolean BLE_client_connected;
+//extern boolean doScan;
 
 extern packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
 //extern packEepromStruct packEeprom;		  // here shall be the latest data got from BMS
@@ -79,10 +81,10 @@ extern bool newPacketReceived;
 
 //  ----- BLE stuff -----
 // extern BLERemoteCharacteristic *pRemoteCharacteristic;
-extern BLEAdvertisedDevice *myDevice;
+//extern BLEAdvertisedDevice *myDevice;
 // extern BLERemoteService *pRemoteService;
 //  The remote service we wish to connect to. Needs check/change when other BLE module used.
-extern BLEUUID serviceUUID; // xiaoxiang bms original module
+//extern BLEUUID serviceUUID; // xiaoxiang bms original module
 // extern BLEUUID charUUID_tx; // xiaoxiang bms original module
 // extern BLEUUID charUUID_rx; // xiaoxiang bms original module
 
