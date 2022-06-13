@@ -2,6 +2,8 @@
 #define MY_CLIENT_CALLBACK_HPP
 
 #include "MyDataProcess.hpp"
+#include "BLEDevice.h"
+#include <Arduino.h>
 
 class MyClientCallback : public BLEClientCallbacks
 { // this is called on connect / disconnect by some underlying magic+

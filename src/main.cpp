@@ -1,16 +1,16 @@
+#include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiMulti.h>
-#include "ESPAsyncWebServer.h"
-
-#include <MyBLE.hpp>
+#include <ESPAsyncWebServer.h>
+#include <SPIFFS.h>
+#include <ESPDateTime.h>
+#include <Ambient.h>
+#include "MyBLE.hpp"
 
 //#include <JbdBms.h>
 //#include <LittleFS.h>
-#include "SPIFFS.h"
-#include "ESPDateTime.h"
 
 #define LittleFS SPIFFS
-#include <Ambient.h>
 
 #define BLUELED 32
 
@@ -143,29 +143,29 @@ String getValues()
   dischargeStatus = MyBLE::packBasicInfo.MosfetStatus & 1 << 1;
   jsonStr += String(dischargeStatus);
   jsonStr += ", \"batteryList\": [";
-  jsonStr += String(packCellInfo.CellVolt[0]);
-  for (int i = 1; i < packCellInfo.NumOfCells; i++)
+  jsonStr += String(MyBLE::packCellInfo.CellVolt[0]);
+  for (int i = 1; i < MyBLE::packCellInfo.NumOfCells; i++)
   {
     jsonStr += ", ";
-    jsonStr += String(packCellInfo.CellVolt[i]);
+    jsonStr += String(MyBLE::packCellInfo.CellVolt[i]);
   }
   jsonStr += "]";
   jsonStr += ", \"batteryDiff\": ";
-  jsonStr += String(packCellInfo.CellDiff);
-  for (int i = 0; i < packCellInfo.NumOfCells; i++)
+  jsonStr += String(MyBLE::packCellInfo.CellDiff);
+  for (int i = 0; i < MyBLE::packCellInfo.NumOfCells; i++)
   {
     cellBalanceList[i] = MyBLE::packBasicInfo.BalanceCodeLow & 1 << i;
   }
   jsonStr += ", \"cellBalanceList\": [";
   jsonStr += String(cellBalanceList[0]);
-  for (int i = 1; i < packCellInfo.NumOfCells; i++)
+  for (int i = 1; i < MyBLE::packCellInfo.NumOfCells; i++)
   {
     jsonStr += ", ";
     jsonStr += String(cellBalanceList[i]);
   }
   jsonStr += "]";
   jsonStr += ", \"cellMedian\": ";
-  jsonStr += String(packCellInfo.CellMedian);
+  jsonStr += String(MyBLE::packCellInfo.CellMedian);
   jsonStr += ", \"BLEConnected\": ";
   jsonStr += String(myBLE.myClientCallback->BLE_client_connected);
   //jsonStr += String(BLE_client_connected);
@@ -260,8 +260,8 @@ void loop()
     LOGD(TAG_, "Pack Voltage: " + String(MyBLE::packBasicInfo.Volts));
     LOGD(TAG_, "BalanceCodeLow: " + String(MyBLE::packBasicInfo.BalanceCodeLow));
     LOGD(TAG_, "MosfetStatus: " + String(MyBLE::packBasicInfo.MosfetStatus));
-    LOGD(TAG_, "CellAvg: " + String(packCellInfo.CellAvg));
-    LOGD(TAG_, "CellMedian: " + String(packCellInfo.CellMedian));
+    LOGD(TAG_, "CellAvg: " + String(MyBLE::packCellInfo.CellAvg));
+    LOGD(TAG_, "CellMedian: " + String(MyBLE::packCellInfo.CellMedian));
     myBLE.printCellInfo();
   }
   if (MyBLE::packBasicInfo.Volts <= sleepVoltage && WiFi.isConnected())
@@ -285,7 +285,7 @@ void loop()
     }
     ambient.set(1, MyBLE::packBasicInfo.Volts / 1000.0f);
     ambient.set(2, MyBLE::packBasicInfo.Amps / 1000.0f);
-    ambient.set(3, packCellInfo.CellDiff / 1.0f);
+    ambient.set(3, MyBLE::packCellInfo.CellDiff / 1.0f);
     ambient.set(4, (MyBLE::packBasicInfo.Temp1 + MyBLE::packBasicInfo.Temp2) / 2 / 10.0f);
     ambient.send();
     ambientlLastSent = millis();

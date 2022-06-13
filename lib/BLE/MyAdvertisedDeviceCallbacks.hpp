@@ -2,6 +2,8 @@
 #define MY_ADVERTISE_DEVICE_HPP
 
 #include "MyDataProcess.hpp"
+#include "BLEDevice.h"
+#include <Arduino.h>
 
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 { // this is called by some underlying magic

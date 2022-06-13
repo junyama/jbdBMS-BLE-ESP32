@@ -2,43 +2,7 @@
 #define MY_DATA_PROCESS_HPP
 
 #include <Arduino.h>
-#include "BLEDevice.h"
-
-typedef struct
-{
-	byte start;
-	byte type;
-	byte status;
-	byte dataLen;
-} bmsPacketHeaderStruct;
-
-typedef struct
-{
-	uint16_t Volts; // unit 1mV
-	int32_t Amps;	// unit 1mA
-	int32_t Watts;	// unit 1W
-	uint16_t CapacityRemainAh;
-	uint8_t CapacityRemainPercent; // unit 1%
-	uint32_t CapacityRemainWh;	   // unit Wh
-	uint16_t Temp1;				   // unit 0.1C
-	uint16_t Temp2;				   // unit 0.1C
-	uint16_t BalanceCodeLow;
-	uint16_t BalanceCodeHigh;
-	uint8_t MosfetStatus;
-} packBasicInfoStruct;
-
-typedef struct
-{
-	uint8_t NumOfCells;
-	uint16_t CellVolt[15]; // cell 1 has index 0 :-/
-	uint16_t CellMax;
-	uint16_t CellMin;
-	uint16_t CellDiff; // difference between highest and lowest
-	uint16_t CellAvg;
-	uint16_t CellMedian;
-	uint32_t CellColor[15];
-	uint32_t CellColorDisbalance[15]; // green cell == median, red/violet cell => median + c_cellMaxDisbalance
-} packCellInfoStruct;
+//#include "BLEDevice.h"
 
 /*
 typedef struct
@@ -75,7 +39,7 @@ typedef struct
 
 //extern packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
 //extern packEepromStruct packEeprom;		  // here shall be the latest data got from BMS
-extern packCellInfoStruct packCellInfo;	  // here shall be the latest data got from BMS
+//extern packCellInfoStruct packCellInfo;	  // here shall be the latest data got from BMS
 
 //extern bool newPacketReceived;
 
@@ -99,17 +63,18 @@ extern void LOGD(String tag, String text);
 // extern bool bleCollectPacket(char *data, uint32_t dataSize);																 // reconstruct packet from BLE incomming data, called by notifyCallback function
 // extern void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify); // this is called when BLE server sents data via notofication
 
+/*
 class MyDataProcess
 { // this is called on connect / disconnect by some underlying magic+
 private:
-	static const String TAG;
-	static const uint16_t c_cellAbsMin;
-	static const uint16_t c_cellAbsMax;
-	static const int32_t c_packMaxWatt;
-	static const uint16_t c_cellMaxDisbalance; // 200; // cell different by this value from cell median is getting violet (worst) color
+	//static const String TAG;
+	//static const uint16_t c_cellAbsMin;
+	//static const uint16_t c_cellAbsMax;
+	//static const int32_t c_packMaxWatt;
+	//static const uint16_t c_cellMaxDisbalance; // 200; // cell different by this value from cell median is getting violet (worst) color
 
 public:
-	static const int32_t c_cellNominalVoltage; // mV
+	//static const int32_t c_cellNominalVoltage; // mV
 
 	// MyDataProcess();
 
@@ -121,5 +86,6 @@ public:
 	//static void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify);
 	//static bool bleCollectPacket(char *data, uint32_t dataSize); // reconstruct packet from BLE incomming data, called by notifyCallback function
 };
+*/
 
 #endif /* MY_DATA_PROCESS_HPP */

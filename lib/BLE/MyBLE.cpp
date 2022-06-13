@@ -2,6 +2,7 @@
 #define MY_BLE_CPP_
 
 #include "MyBLE.hpp"
+
 //#include "MyAdvertisedDeviceCallbacks.hpp"
 //#include "MyClientCallback.hpp"
 
@@ -14,7 +15,7 @@
 
 //packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
 // packEepromStruct packEeprom;       // here shall be the latest data got from BMS
-packCellInfoStruct packCellInfo; // here shall be the latest data got from BMS
+//packCellInfoStruct packCellInfo; // here shall be the latest data got from BMS
 
 // static unsigned long previousMillis = 0;
 // static const long interval = 2000;
@@ -37,10 +38,19 @@ MyBLE::MyBLE()
 }
 
 const String MyBLE::TAG = "MyBLE";
+
 const long MyBLE::interval = 2000;
+
+const int32_t MyBLE::c_cellNominalVoltage = 3700;
+const uint16_t MyBLE::c_cellAbsMin = 3000;
+const uint16_t MyBLE::c_cellAbsMax = 4200;
+const int32_t MyBLE::c_packMaxWatt = 1250;
+const uint16_t MyBLE::c_cellMaxDisbalance = 1500;
+
 bool MyBLE::newPacketReceived = false;
+
 packBasicInfoStruct MyBLE::packBasicInfo;
-//packCellInfoStruct MyBLE::packCellInfo; 
+packCellInfoStruct MyBLE::packCellInfo; 
 
 //move from MyDataProcess
 int16_t MyBLE::two_ints_into16(int highbyte, int lowbyte) // turns two bytes into a single long integer
@@ -71,7 +81,7 @@ bool MyBLE::processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned i
     output->CapacityRemainAh = ((uint16_t)two_ints_into16(data[4], data[5])) * 10;
     output->CapacityRemainPercent = ((uint8_t)data[19]);
 
-    output->CapacityRemainWh = (output->CapacityRemainAh * MyDataProcess::c_cellNominalVoltage) / 1000000 * packCellInfo.NumOfCells;
+    output->CapacityRemainWh = (output->CapacityRemainAh * c_cellNominalVoltage) / 1000000 * packCellInfo.NumOfCells;
 
     output->Temp1 = (((uint16_t)two_ints_into16(data[23], data[24])) - 2731);
     output->Temp2 = (((uint16_t)two_ints_into16(data[25], data[26])) - 2731);

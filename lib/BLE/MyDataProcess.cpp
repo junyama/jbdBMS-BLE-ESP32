@@ -11,12 +11,13 @@ void LOGD(String tag, String text)
     Serial.println(text);
 }
 
-const String MyDataProcess::TAG = "MyDataProcess";
-const int32_t MyDataProcess::c_cellNominalVoltage = 3700;
-const uint16_t MyDataProcess::c_cellAbsMin = 3000;
-const uint16_t MyDataProcess::c_cellAbsMax = 4200;
-const int32_t MyDataProcess::c_packMaxWatt = 1250;
-const uint16_t MyDataProcess::c_cellMaxDisbalance = 1500;
+//const String MyDataProcess::TAG = "MyDataProcess";
+
+//const int32_t MyDataProcess::c_cellNominalVoltage = 3700;
+//const uint16_t MyDataProcess::c_cellAbsMin = 3000;
+//const uint16_t MyDataProcess::c_cellAbsMax = 4200;
+//const int32_t MyDataProcess::c_packMaxWatt = 1250;
+//const uint16_t MyDataProcess::c_cellMaxDisbalance = 1500;
 
 /*
 int16_t MyDataProcess::two_ints_into16(int highbyte, int lowbyte) // turns two bytes into a single long integer
