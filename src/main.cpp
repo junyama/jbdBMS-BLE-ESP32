@@ -125,22 +125,22 @@ String getValues()
   String jsonStr = "";
   jsonStr.reserve(300);
   jsonStr += "{\"batteryTemp1\": ";
-  jsonStr += String(packBasicInfo.Temp1);
+  jsonStr += String(MyBLE::packBasicInfo.Temp1);
   jsonStr += ", \"batteryTemp2\": ";
-  jsonStr += String(packBasicInfo.Temp2);
+  jsonStr += String(MyBLE::packBasicInfo.Temp2);
   jsonStr += ", \"batteryChargePercentage\": ";
-  jsonStr += String(packBasicInfo.CapacityRemainPercent);
+  jsonStr += String(MyBLE::packBasicInfo.CapacityRemainPercent);
   jsonStr += ", \"batteryCurrent\": ";
-  jsonStr += String(packBasicInfo.Amps / 10);
+  jsonStr += String(MyBLE::packBasicInfo.Amps / 10);
   // jsonStr += ", \"batteryCycleCount\": ";
   // jsonStr += String(batteryCycleCount);
   jsonStr += ", \"batteryVoltage\": ";
-  jsonStr += String(packBasicInfo.Volts / 10);
+  jsonStr += String(MyBLE::packBasicInfo.Volts / 10);
   jsonStr += ", \"chargeStatus\": ";
-  chargeStatus = packBasicInfo.MosfetStatus & 1;
+  chargeStatus = MyBLE::packBasicInfo.MosfetStatus & 1;
   jsonStr += String(chargeStatus);
   jsonStr += ", \"dischargeStatus\": ";
-  dischargeStatus = packBasicInfo.MosfetStatus & 1 << 1;
+  dischargeStatus = MyBLE::packBasicInfo.MosfetStatus & 1 << 1;
   jsonStr += String(dischargeStatus);
   jsonStr += ", \"batteryList\": [";
   jsonStr += String(packCellInfo.CellVolt[0]);
@@ -154,7 +154,7 @@ String getValues()
   jsonStr += String(packCellInfo.CellDiff);
   for (int i = 0; i < packCellInfo.NumOfCells; i++)
   {
-    cellBalanceList[i] = packBasicInfo.BalanceCodeLow & 1 << i;
+    cellBalanceList[i] = MyBLE::packBasicInfo.BalanceCodeLow & 1 << i;
   }
   jsonStr += ", \"cellBalanceList\": [";
   jsonStr += String(cellBalanceList[0]);
@@ -246,7 +246,7 @@ void setup()
   LOGD(TAG_, "BLE setup done");
 
   // initalize pack volt not to disconnect WiFi
-  packBasicInfo.Volts = 15000;
+  MyBLE::packBasicInfo.Volts = 15000;
 }
 
 void loop()
@@ -257,24 +257,24 @@ void loop()
     LOGD(TAG_, "new pcaket received");
     // showInfoLcd;
     myBLE.printBasicInfo();
-    LOGD(TAG_, "Pack Voltage: " + String(packBasicInfo.Volts));
-    LOGD(TAG_, "BalanceCodeLow: " + String(packBasicInfo.BalanceCodeLow));
-    LOGD(TAG_, "MosfetStatus: " + String(packBasicInfo.MosfetStatus));
+    LOGD(TAG_, "Pack Voltage: " + String(MyBLE::packBasicInfo.Volts));
+    LOGD(TAG_, "BalanceCodeLow: " + String(MyBLE::packBasicInfo.BalanceCodeLow));
+    LOGD(TAG_, "MosfetStatus: " + String(MyBLE::packBasicInfo.MosfetStatus));
     LOGD(TAG_, "CellAvg: " + String(packCellInfo.CellAvg));
     LOGD(TAG_, "CellMedian: " + String(packCellInfo.CellMedian));
     myBLE.printCellInfo();
   }
-  if (packBasicInfo.Volts <= sleepVoltage && WiFi.isConnected())
+  if (MyBLE::packBasicInfo.Volts <= sleepVoltage && WiFi.isConnected())
   {
-    LOGD(TAG_, "disconnecting WiFi, batteryVoltage: " + String(packBasicInfo.Volts) + " <= " + String(sleepVoltage));
+    LOGD(TAG_, "disconnecting WiFi, batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + " <= " + String(sleepVoltage));
     WiFi.disconnect(true);
     digitalWrite(BLUELED, LOW);
     ambientSendInterval = ambientSendIntervalBase * 10;
   }
-  if (packBasicInfo.Volts > sleepVoltage && !WiFi.isConnected())
+  if (MyBLE::packBasicInfo.Volts > sleepVoltage && !WiFi.isConnected())
   {
     wifiConnect();
-    LOGD(TAG_, "woke up and WiFi reconnected, batteryVoltage: " + String(packBasicInfo.Volts) + " > " + String(sleepVoltage));
+    LOGD(TAG_, "woke up and WiFi reconnected, batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + " > " + String(sleepVoltage));
     ambientSendInterval = ambientSendIntervalBase;
   }
   if (millis() - ambientlLastSent >= ambientSendInterval)
@@ -283,12 +283,12 @@ void loop()
     {
       wifiConnect();
     }
-    ambient.set(1, packBasicInfo.Volts / 1000.0f);
-    ambient.set(2, packBasicInfo.Amps / 1000.0f);
+    ambient.set(1, MyBLE::packBasicInfo.Volts / 1000.0f);
+    ambient.set(2, MyBLE::packBasicInfo.Amps / 1000.0f);
     ambient.set(3, packCellInfo.CellDiff / 1.0f);
-    ambient.set(4, (packBasicInfo.Temp1 + packBasicInfo.Temp2) / 2 / 10.0f);
+    ambient.set(4, (MyBLE::packBasicInfo.Temp1 + MyBLE::packBasicInfo.Temp2) / 2 / 10.0f);
     ambient.send();
     ambientlLastSent = millis();
-    LOGD(TAG_, "ambient sent, batteryVoltage: " + String(packBasicInfo.Volts) + ", batteryCurrent: " + String(packBasicInfo.Amps) + ", batteryTemp1: " + String(packBasicInfo.Temp1) + ", batteryTemp2: " + String(packBasicInfo.Temp2));
+    LOGD(TAG_, "ambient sent, batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + ", batteryCurrent: " + String(MyBLE::packBasicInfo.Amps) + ", batteryTemp1: " + String(MyBLE::packBasicInfo.Temp1) + ", batteryTemp2: " + String(MyBLE::packBasicInfo.Temp2));
   }
 }

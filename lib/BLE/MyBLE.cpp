@@ -12,7 +12,7 @@
 //boolean BLE_client_connected = false;
 //boolean doScan = false;
 
-packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
+//packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
 // packEepromStruct packEeprom;       // here shall be the latest data got from BMS
 packCellInfoStruct packCellInfo; // here shall be the latest data got from BMS
 
@@ -40,6 +40,7 @@ const String MyBLE::TAG = "MyBLE";
 const long MyBLE::interval = 2000;
 bool MyBLE::newPacketReceived = false;
 packBasicInfoStruct MyBLE::packBasicInfo;
+//packCellInfoStruct MyBLE::packCellInfo; 
 
 //move from MyDataProcess
 int16_t MyBLE::two_ints_into16(int highbyte, int lowbyte) // turns two bytes into a single long integer

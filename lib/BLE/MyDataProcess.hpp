@@ -73,7 +73,7 @@ typedef struct
 //extern boolean BLE_client_connected;
 //extern boolean doScan;
 
-extern packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
+//extern packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
 //extern packEepromStruct packEeprom;		  // here shall be the latest data got from BMS
 extern packCellInfoStruct packCellInfo;	  // here shall be the latest data got from BMS
 
