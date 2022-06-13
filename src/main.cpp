@@ -252,7 +252,7 @@ void setup()
 void loop()
 {
   myBLE.bleRequestData();
-  if (newPacketReceived == true)
+  if (MyBLE::newPacketReceived == true)
   {
     LOGD(TAG_, "new pcaket received");
     // showInfoLcd;

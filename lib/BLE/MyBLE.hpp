@@ -28,12 +28,21 @@ private:
 
 	//BLEAdvertisedDevice *myDevice;
 
+	static int16_t two_ints_into16(int highbyte, int lowbyte); // turns two bytes into a single long integer
+	static bool processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned int dataLen);
+	static bool processCellInfo(packCellInfoStruct *output, byte *data, unsigned int dataLen);
+	static bool isPacketValid(byte *packet); // check if packet is valid
+	static bool bmsProcessPacket(byte *packet);
+	static void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify);
+	static bool bleCollectPacket(char *data, uint32_t dataSize); // reconstruct packet from BLE incomming data, called by notifyCallback function
+
 public:
 	MyAdvertisedDeviceCallbacks *myAdvertisedDeviceCallbacks;
 	MyClientCallback *myClientCallback; 
+	static bool newPacketReceived;
 
-	//packBasicInfoStruct packBasicInfo2; // here shall be the latest data got from BMS
-	//packCellInfoStruct packCellInfo2; // here shall be the latest data got from BMS
+	static packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
+	//static packCellInfoStruct packCellInfo; // here shall be the latest data got from BMS
 
 	MyBLE();
 	void printBasicInfo(); // debug all data to uart

@@ -77,7 +77,7 @@ extern packBasicInfoStruct packBasicInfo; // here shall be the latest data got f
 //extern packEepromStruct packEeprom;		  // here shall be the latest data got from BMS
 extern packCellInfoStruct packCellInfo;	  // here shall be the latest data got from BMS
 
-extern bool newPacketReceived;
+//extern bool newPacketReceived;
 
 //  ----- BLE stuff -----
 // extern BLERemoteCharacteristic *pRemoteCharacteristic;
@@ -103,22 +103,23 @@ class MyDataProcess
 { // this is called on connect / disconnect by some underlying magic+
 private:
 	static const String TAG;
-	static const int32_t c_cellNominalVoltage; // mV
 	static const uint16_t c_cellAbsMin;
 	static const uint16_t c_cellAbsMax;
 	static const int32_t c_packMaxWatt;
 	static const uint16_t c_cellMaxDisbalance; // 200; // cell different by this value from cell median is getting violet (worst) color
 
 public:
+	static const int32_t c_cellNominalVoltage; // mV
+
 	// MyDataProcess();
 
-	static int16_t two_ints_into16(int highbyte, int lowbyte); // turns two bytes into a single long integer
-	static bool processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned int dataLen);
-	static bool processCellInfo(packCellInfoStruct *output, byte *data, unsigned int dataLen);
-	static bool isPacketValid(byte *packet); // check if packet is valid
-	static bool bmsProcessPacket(byte *packet);
-	static void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify);
-	static bool bleCollectPacket(char *data, uint32_t dataSize); // reconstruct packet from BLE incomming data, called by notifyCallback function
+	//static int16_t two_ints_into16(int highbyte, int lowbyte); // turns two bytes into a single long integer
+	//static bool processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned int dataLen);
+	//static bool processCellInfo(packCellInfoStruct *output, byte *data, unsigned int dataLen);
+	//static bool isPacketValid(byte *packet); // check if packet is valid
+	//static bool bmsProcessPacket(byte *packet);
+	//static void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify);
+	//static bool bleCollectPacket(char *data, uint32_t dataSize); // reconstruct packet from BLE incomming data, called by notifyCallback function
 };
 
 #endif /* MY_DATA_PROCESS_HPP */

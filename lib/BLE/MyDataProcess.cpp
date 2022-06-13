@@ -18,6 +18,7 @@ const uint16_t MyDataProcess::c_cellAbsMax = 4200;
 const int32_t MyDataProcess::c_packMaxWatt = 1250;
 const uint16_t MyDataProcess::c_cellMaxDisbalance = 1500;
 
+/*
 int16_t MyDataProcess::two_ints_into16(int highbyte, int lowbyte) // turns two bytes into a single long integer
 {
     // TRACE;
@@ -268,5 +269,6 @@ void MyDataProcess::notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteri
     // hexDump((char*)pData, length);
     bleCollectPacket((char *)pData, length);
 }
+*/
 
 #endif /* MY_DATA_PROCESS_CPP */
