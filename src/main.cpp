@@ -6,6 +6,9 @@
 #include <ESPDateTime.h>
 #include <Ambient.h>
 #include "MyBLE.hpp"
+#include "MyDebug2.hpp"
+
+using namespace MyLOG;
 
 //#include <JbdBms.h>
 //#include <LittleFS.h>
@@ -69,9 +72,9 @@ void setupDateTime()
   /** changed from 0.2.x **/
   DateTime.begin(15 * 1000 /* timeout param */);
   if (DateTime.isTimeValid())
-    LOGD(TAG_, "DateTime setup done");
+    LOGD2(TAG_, "DateTime setup done");
   else
-    LOGD(TAG_, "Failed to get time from server.");
+    LOGD2(TAG_, "Failed to get time from server.");
 }
 
 void wifiScann()
@@ -109,7 +112,7 @@ void wifiConnect()
   {
     String logText = "WiFi connected: " + WiFi.SSID();
     logText += " " + String(WiFi.RSSI());
-    LOGD(TAG_, logText);
+    LOGD2(TAG_, logText);
     Serial.print("IP: ");
     Serial.println(WiFi.localIP());
     digitalWrite(BLUELED, HIGH);
@@ -188,15 +191,15 @@ void setup()
   digitalWrite(BLUELED, LOW);
 
   // LITTLEFS
-  LOGD(TAG_, "mounting LittleFS");
+  LOGD2(TAG_, "mounting LittleFS");
   if (!LittleFS.begin(true))
   {
-    LOGD(TAG_, "SPIFFS mount failed");
+    LOGD2(TAG_, "SPIFFS mount failed");
     return;
   }
   else
   {
-    LOGD(TAG_, "SPIFFS mount done");
+    LOGD2(TAG_, "SPIFFS mount done");
   }
 
   // setup WiFi
@@ -206,14 +209,14 @@ void setup()
   wifiMulti.addAP("Jun-Home-AP", "takehiro");
   wifiMulti.addAP("Jun-FS020W", "takehiro");
   wifiMulti.addAP("Jun-Moto-Z2-Play", "takehiro");
-  LOGD(TAG_, "going to scann WiFi");
+  LOGD2(TAG_, "going to scann WiFi");
   wifiScann();
-  LOGD(TAG_, "going to connect WiFi");
+  LOGD2(TAG_, "going to connect WiFi");
   wifiConnect();
-  LOGD(TAG_, "WiFi setup done");
+  LOGD2(TAG_, "WiFi setup done");
 
   // setup DateTime
-  LOGD(TAG_, "Going to setup date");
+  LOGD2(TAG_, "Going to setup date");
   setupDateTime();
 
   // setup webAPIs
@@ -239,11 +242,11 @@ void setup()
 
   // init ambient channelID and key
   ambient.begin(channelId, writeKey, &client);
-  LOGD(TAG_, "ambient setup done");
+  LOGD2(TAG_, "ambient setup done");
 
   // setup BLE
   myBLE.bleStartup();
-  LOGD(TAG_, "BLE setup done");
+  LOGD2(TAG_, "BLE setup done");
 
   // initalize pack volt not to disconnect WiFi
   MyBLE::packBasicInfo.Volts = 15000;
@@ -254,19 +257,19 @@ void loop()
   myBLE.bleRequestData();
   if (MyBLE::newPacketReceived == true)
   {
-    LOGD(TAG_, "new pcaket received");
+    LOGD2(TAG_, "new pcaket received");
     // showInfoLcd;
     myBLE.printBasicInfo();
-    LOGD(TAG_, "Pack Voltage: " + String(MyBLE::packBasicInfo.Volts));
-    LOGD(TAG_, "BalanceCodeLow: " + String(MyBLE::packBasicInfo.BalanceCodeLow));
-    LOGD(TAG_, "MosfetStatus: " + String(MyBLE::packBasicInfo.MosfetStatus));
-    LOGD(TAG_, "CellAvg: " + String(MyBLE::packCellInfo.CellAvg));
-    LOGD(TAG_, "CellMedian: " + String(MyBLE::packCellInfo.CellMedian));
+    LOGD2(TAG_, "Pack Voltage: " + String(MyBLE::packBasicInfo.Volts));
+    LOGD2(TAG_, "BalanceCodeLow: " + String(MyBLE::packBasicInfo.BalanceCodeLow));
+    LOGD2(TAG_, "MosfetStatus: " + String(MyBLE::packBasicInfo.MosfetStatus));
+    LOGD2(TAG_, "CellAvg: " + String(MyBLE::packCellInfo.CellAvg));
+    LOGD2(TAG_, "CellMedian: " + String(MyBLE::packCellInfo.CellMedian));
     myBLE.printCellInfo();
   }
   if (MyBLE::packBasicInfo.Volts <= sleepVoltage && WiFi.isConnected())
   {
-    LOGD(TAG_, "disconnecting WiFi, batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + " <= " + String(sleepVoltage));
+    LOGD2(TAG_, "disconnecting WiFi, batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + " <= " + String(sleepVoltage));
     WiFi.disconnect(true);
     digitalWrite(BLUELED, LOW);
     ambientSendInterval = ambientSendIntervalBase * 10;
@@ -274,7 +277,7 @@ void loop()
   if (MyBLE::packBasicInfo.Volts > sleepVoltage && !WiFi.isConnected())
   {
     wifiConnect();
-    LOGD(TAG_, "woke up and WiFi reconnected, batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + " > " + String(sleepVoltage));
+    LOGD2(TAG_, "woke up and WiFi reconnected, batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + " > " + String(sleepVoltage));
     ambientSendInterval = ambientSendIntervalBase;
   }
   if (millis() - ambientlLastSent >= ambientSendInterval)
@@ -289,6 +292,6 @@ void loop()
     ambient.set(4, (MyBLE::packBasicInfo.Temp1 + MyBLE::packBasicInfo.Temp2) / 2 / 10.0f);
     ambient.send();
     ambientlLastSent = millis();
-    LOGD(TAG_, "ambient sent, batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + ", batteryCurrent: " + String(MyBLE::packBasicInfo.Amps) + ", batteryTemp1: " + String(MyBLE::packBasicInfo.Temp1) + ", batteryTemp2: " + String(MyBLE::packBasicInfo.Temp2));
+    LOGD2(TAG_, "ambient sent, batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + ", batteryCurrent: " + String(MyBLE::packBasicInfo.Amps) + ", batteryTemp1: " + String(MyBLE::packBasicInfo.Temp1) + ", batteryTemp2: " + String(MyBLE::packBasicInfo.Temp2));
   }
 }

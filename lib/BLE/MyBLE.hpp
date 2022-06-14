@@ -2,7 +2,8 @@
 #define MY_BLE_HPP
 
 #include <Arduino.h>
-#include "MyDataProcess.hpp"
+//#include "MyDataProcess.hpp"
+#include "MyDebug2.hpp"
 #include "BLEDevice.h"
 #include "MyAdvertisedDeviceCallbacks.hpp"
 #include "MyClientCallback.hpp"

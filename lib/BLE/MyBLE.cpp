@@ -3,6 +3,8 @@
 
 #include "MyBLE.hpp"
 
+using namespace MyLOG;
+
 //#include "MyAdvertisedDeviceCallbacks.hpp"
 //#include "MyClientCallback.hpp"
 
@@ -69,7 +71,7 @@ bool MyBLE::processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned i
     // if (dataLen != 0x1B)
     if (dataLen != 0x1D) // changed by Jun
     {
-        LOGD(TAG, "BasicInfo data length invalid: " + String(dataLen));
+        LOGD2(TAG, "BasicInfo data length invalid: " + String(dataLen));
         return false;
     }
 
@@ -219,7 +221,7 @@ bool MyBLE::bmsProcessPacket(byte *packet)
 
     if (isValid != true)
     {
-        LOGD(TAG, "Invalid packer received");
+        LOGD2(TAG, "Invalid packer received");
         return false;
     }
 
@@ -330,7 +332,7 @@ void MyBLE::bmsGetInfo4()
 void MyBLE::printBasicInfo() // debug all data to uart
 {
     // TRACE;
-    LOGD(TAG, "BasicInfo Beging >>>>>>>>>>");
+    LOGD2(TAG, "BasicInfo Beging >>>>>>>>>>");
     Serial.printf("Total voltage: %f\n", (float)packBasicInfo.Volts / 1000);
     Serial.printf("Amps: %f\n", (float)packBasicInfo.Amps / 1000);
     Serial.printf("CapacityRemainAh: %f\n", (float)packBasicInfo.CapacityRemainAh / 1000);
@@ -340,14 +342,14 @@ void MyBLE::printBasicInfo() // debug all data to uart
     Serial.printf("Balance Code Low: 0x%x\n", packBasicInfo.BalanceCodeLow);
     Serial.printf("Balance Code High: 0x%x\n", packBasicInfo.BalanceCodeHigh);
     Serial.printf("Mosfet Status: 0x%x\n", packBasicInfo.MosfetStatus);
-    LOGD(TAG, "BasicInfo END <<<<<<<<<<<<<");
+    LOGD2(TAG, "BasicInfo END <<<<<<<<<<<<<");
     commSerial.println();
 }
 
 void MyBLE::printCellInfo() // debug all data to uart
 {
     // TRACE;
-    LOGD(TAG, "CellInfo Beging >>>>>>>>>>");
+    LOGD2(TAG, "CellInfo Beging >>>>>>>>>>");
     commSerial.printf("Number of cells: %u\n", packCellInfo.NumOfCells);
     for (byte i = 1; i <= packCellInfo.NumOfCells; i++)
     {
@@ -359,7 +361,7 @@ void MyBLE::printCellInfo() // debug all data to uart
     commSerial.printf("Difference cell volt: %f\n", (float)packCellInfo.CellDiff / 1000);
     commSerial.printf("Average cell volt: %f\n", (float)packCellInfo.CellAvg / 1000);
     commSerial.printf("Median cell volt: %f\n", (float)packCellInfo.CellMedian / 1000);
-    LOGD(TAG, "CellInfo END <<<<<<<<<<<<<");
+    LOGD2(TAG, "CellInfo END <<<<<<<<<<<<<");
     commSerial.println();
 }
 
@@ -383,12 +385,12 @@ void MyBLE::bleStartup()
 bool MyBLE::connectToServer()
 {
     // TRACE;
-    LOGD(TAG, "Forming a connection to " + String(myAdvertisedDeviceCallbacks->myDevice->getAddress().toString().c_str()));
+    LOGD2(TAG, "Forming a connection to " + String(myAdvertisedDeviceCallbacks->myDevice->getAddress().toString().c_str()));
     // lcdConnectingStatus(0);
-    // LOGD(TAG, myDevice->getAddress().toString().c_str());
+    // LOGD2(TAG, myDevice->getAddress().toString().c_str());
     pClient = BLEDevice::createClient();
     BLEClient *pClient = BLEDevice::createClient();
-    LOGD(TAG, "Created client");
+    LOGD2(TAG, "Created client");
     // lcdConnectingStatus(1);
     myClientCallback = new MyClientCallback();
     pClient->setClientCallbacks(myClientCallback);
@@ -396,39 +398,39 @@ bool MyBLE::connectToServer()
 
     // Connect to the remove BLE Server.
     pClient->connect(myAdvertisedDeviceCallbacks->myDevice); // if you pass BLEAdvertisedDevice instead of address, it will be recognized type of peer device address (public or private)
-    LOGD(TAG, "Connected to server");
+    LOGD2(TAG, "Connected to server");
     // lcdConnectingStatus(2);
     //  Obtain a reference to the service we are after in the remote BLE server.
     //  BLERemoteService*
     pRemoteService = pClient->getService(serviceUUID);
     if (pRemoteService == nullptr)
     {
-        LOGD(TAG, "Failed to find our service UUID: ");
+        LOGD2(TAG, "Failed to find our service UUID: ");
         // lcdConnectingStatus(3);
-        LOGD(TAG, serviceUUID.toString().c_str());
+        LOGD2(TAG, serviceUUID.toString().c_str());
         pClient->disconnect();
         return false;
     }
-    LOGD(TAG, "Found our service");
+    LOGD2(TAG, "Found our service");
     // lcdConnectingStatus(4);
 
     // Obtain a reference to the characteristic in the service of the remote BLE server.
     pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID_rx);
     if (pRemoteCharacteristic == nullptr)
     {
-        LOGD(TAG, "Failed to find our characteristic UUID: ");
+        LOGD2(TAG, "Failed to find our characteristic UUID: ");
         // lcdConnectingStatus(5);
-        LOGD(TAG, charUUID_rx.toString().c_str());
+        LOGD2(TAG, charUUID_rx.toString().c_str());
         pClient->disconnect();
         return false;
     }
-    LOGD(TAG, "Found our characteristic");
+    LOGD2(TAG, "Found our characteristic");
     // lcdConnectingStatus(6);
     //  Read the value of the characteristic.
     if (pRemoteCharacteristic->canRead())
     {
         std::string value = pRemoteCharacteristic->readValue();
-        LOGD(TAG, "The characteristic value was: " + String(value.c_str()));
+        LOGD2(TAG, "The characteristic value was: " + String(value.c_str()));
         commSerial.println(value.c_str());
     }
 
@@ -442,7 +444,7 @@ void MyBLE::disconnectFromServer() // does not work as intended, but automatical
 {
     pClient->disconnect();
     // BLE_client_connected = false;
-    LOGD(TAG, "disconnected from the BLE Server.");
+    LOGD2(TAG, "disconnected from the BLE Server.");
 }
 
 void MyBLE::bleRequestData()
@@ -454,12 +456,12 @@ void MyBLE::bleRequestData()
     {
         if (connectToServer())
         {
-            LOGD(TAG, "connected to the BLE Server.");
+            LOGD2(TAG, "connected to the BLE Server.");
             // lcdConnected();
         }
         else
         {
-            LOGD(TAG, "failed to connect to the BLE Server.");
+            LOGD2(TAG, "failed to connect to the BLE Server.");
             // lcdConnectionFailed();
         }
         myAdvertisedDeviceCallbacks->doConnect = false;
@@ -515,7 +517,7 @@ void MyBLE::sendCommand(uint8_t *data, uint32_t dataLen)
     }
     else
     {
-        LOGD(TAG, "Remote TX characteristic not found");
+        LOGD2(TAG, "Remote TX characteristic not found");
     }
 }
 
