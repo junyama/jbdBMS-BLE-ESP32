@@ -97,11 +97,11 @@ bool MyBLE::processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned i
 bool MyBLE::processCellInfo(packCellInfoStruct *output, byte *data, unsigned int dataLen)
 {
     // TRACE;
-    uint16_t _cellSum;
+    uint16_t _cellSum = 0;
     uint16_t _cellMin = 5000;
     uint16_t _cellMax = 0;
-    uint16_t _cellAvg;
-    uint16_t _cellDiff;
+    //uint16_t _cellAvg;
+    //uint16_t _cellDiff;
 
     output->NumOfCells = dataLen / 2; // Data length * 2 is number of cells !!!!!!
 
@@ -159,12 +159,13 @@ bool MyBLE::processCellInfo(packCellInfoStruct *output, byte *data, unsigned int
     {
         output->CellMedian = x[n / 2 + 1];
     }
-
+    /*
     for (uint8_t q = 0; q < output->NumOfCells; q++)
     {
         uint32_t disbal = abs(output->CellMedian - output->CellVolt[q]);
         // output->CellColorDisbalance[q] = getPixelColorHsv(mapHue(disbal, c_cellMaxDisbalance, 0), 255, 255);
     }
+    */
     return true;
 }
 
