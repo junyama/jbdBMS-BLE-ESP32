@@ -15,7 +15,7 @@ using namespace MyLOG;
 
 #define LittleFS SPIFFS
 
-#define BLUELED 32
+#define WIFI_LED 32
 
 static const String TAG_ = "main";
 //static const String TAG = "main"; // error: redefinition of 'const String TAG'
@@ -32,7 +32,7 @@ AsyncWebServer server(80);
 
 // JbbBms
 // JbdBms myBms(&mySerial);
-MyBLE myBLE;
+//MyBLE myBLE;
 
 // some varialbles declaration and initalization
 // unsigned long SerialLastLoad = 0;
@@ -115,7 +115,7 @@ void wifiConnect()
     LOGD(TAG_, logText);
     Serial.print("IP: ");
     Serial.println(WiFi.localIP());
-    digitalWrite(BLUELED, HIGH);
+    digitalWrite(WIFI_LED, HIGH);
   }
   else
   {
@@ -170,7 +170,7 @@ String getValues()
   jsonStr += ", \"cellMedian\": ";
   jsonStr += String(MyBLE::packCellInfo.CellMedian);
   jsonStr += ", \"BLEConnected\": ";
-  jsonStr += String(myBLE.myClientCallback->BLE_client_connected);
+  jsonStr += String(MyBLE::myClientCallback->BLE_client_connected);
   //jsonStr += String(BLE_client_connected);
   jsonStr += "}";
   return jsonStr;
@@ -178,7 +178,7 @@ String getValues()
 
 String disconnectBLE()
 {
-  myBLE.disconnectFromServer();
+  MyBLE::disconnectFromServer();
   return "OK";
 }
 
@@ -187,8 +187,8 @@ void setup()
   Serial.begin(115200); // Standard hardware serial port
 
   // LED setup
-  pinMode(BLUELED, OUTPUT);
-  digitalWrite(BLUELED, LOW);
+  pinMode(WIFI_LED, OUTPUT);
+  digitalWrite(WIFI_LED, LOW);
 
   // LITTLEFS
   LOGD(TAG_, "mounting LittleFS");
@@ -245,7 +245,7 @@ void setup()
   LOGD(TAG_, "ambient setup done");
 
   // setup BLE
-  myBLE.bleStartup();
+  MyBLE::bleStartup();
   LOGD(TAG_, "BLE setup done");
 
   // initalize pack volt not to disconnect WiFi
@@ -254,24 +254,24 @@ void setup()
 
 void loop()
 {
-  myBLE.bleRequestData();
+  MyBLE::bleRequestData();
   if (MyBLE::newPacketReceived == true)
   {
     LOGD(TAG_, "new pcaket received");
     // showInfoLcd;
-    myBLE.printBasicInfo();
+    MyBLE::printBasicInfo();
     LOGD(TAG_, "Pack Voltage: " + String(MyBLE::packBasicInfo.Volts));
     LOGD(TAG_, "BalanceCodeLow: " + String(MyBLE::packBasicInfo.BalanceCodeLow));
     LOGD(TAG_, "MosfetStatus: " + String(MyBLE::packBasicInfo.MosfetStatus));
     LOGD(TAG_, "CellAvg: " + String(MyBLE::packCellInfo.CellAvg));
     LOGD(TAG_, "CellMedian: " + String(MyBLE::packCellInfo.CellMedian));
-    myBLE.printCellInfo();
+    MyBLE::printCellInfo();
   }
   if (MyBLE::packBasicInfo.Volts <= sleepVoltage && WiFi.isConnected())
   {
     LOGD(TAG_, "disconnecting WiFi, batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + " <= " + String(sleepVoltage));
     WiFi.disconnect(true);
-    digitalWrite(BLUELED, LOW);
+    digitalWrite(WIFI_LED, LOW);
     ambientSendInterval = ambientSendIntervalBase * 10;
   }
   if (MyBLE::packBasicInfo.Volts > sleepVoltage && !WiFi.isConnected())

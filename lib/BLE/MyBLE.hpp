@@ -49,20 +49,20 @@ class MyBLE
 private:
 	static const String TAG;
 	static const long interval;
+	static unsigned long previousMillis;
+	static bool toggle;
 
-	unsigned long previousMillis;
-	bool toggle;
-	BLEClient *pClient;
-	void bmsGetInfo3();
-	void bmsGetInfo4();
-	bool connectToServer();
-	void sendCommand(uint8_t *data, uint32_t dataLen);
+	static BLEClient *pClient;
+	static void bmsGetInfo3();
+	static void bmsGetInfo4();
+	static bool connectToServer();
+	static void sendCommand(uint8_t *data, uint32_t dataLen);
 
-	BLERemoteCharacteristic *pRemoteCharacteristic; // m
-	BLERemoteService *pRemoteService;				// m
-	BLEUUID serviceUUID;
-	BLEUUID charUUID_tx; // xiaoxiang bms original module //m
-	BLEUUID charUUID_rx; // xiaoxiang bms original module //m
+	static BLERemoteCharacteristic *pRemoteCharacteristic; // m
+	static BLERemoteService *pRemoteService;				// m
+	static BLEUUID serviceUUID;
+	static BLEUUID charUUID_tx; // xiaoxiang bms original module //m
+	static BLEUUID charUUID_rx; // xiaoxiang bms original module //m
 
 	// BLEAdvertisedDevice *myDevice;
 
@@ -75,8 +75,8 @@ private:
 	static bool bleCollectPacket(char *data, uint32_t dataSize); // reconstruct packet from BLE incomming data, called by notifyCallback function
 
 public:
-	MyAdvertisedDeviceCallbacks *myAdvertisedDeviceCallbacks;
-	MyClientCallback *myClientCallback;
+	static MyAdvertisedDeviceCallbacks *myAdvertisedDeviceCallbacks;
+	static MyClientCallback *myClientCallback;
 
 	static const int32_t c_cellNominalVoltage; // mV
 	static const uint16_t c_cellAbsMin;
@@ -89,12 +89,12 @@ public:
 	static packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
 	static packCellInfoStruct packCellInfo;	  // here shall be the latest data got from BMS
 
-	MyBLE();
-	void printBasicInfo(); // debug all data to uart
-	void printCellInfo();  // debug all data to uart
-	void bleStartup();
-	void disconnectFromServer(); // does not work as intended, but automatically reconnected
-	void bleRequestData();
+	//MyBLE();
+	static void printBasicInfo(); // debug all data to uart
+	static void printCellInfo();  // debug all data to uart
+	static void bleStartup();
+	static void disconnectFromServer(); // does not work as intended, but automatically reconnected
+	static void bleRequestData();
 };
 
 #endif /* MY_BLE_HPP */

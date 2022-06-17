@@ -9,6 +9,7 @@ using namespace MyLOG;
 //#include "MyClientCallback.hpp"
 
 #define commSerial Serial
+#define BLE_LED 33
 
 //---- global variables ----
 //boolean doConnect = false;
@@ -34,14 +35,27 @@ using namespace MyLOG;
 // BLEUUID charUUID_tx("0000ff02-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module //m
 // BLEUUID charUUID_rx("0000ff01-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module //m
 
+/*
 MyBLE::MyBLE()
-    : previousMillis(0), toggle(false), serviceUUID("0000ff00-0000-1000-8000-00805f9b34fb"), charUUID_tx("0000ff02-0000-1000-8000-00805f9b34fb"), charUUID_rx("0000ff01-0000-1000-8000-00805f9b34fb")
 {
 }
+*/
 
 const String MyBLE::TAG = "MyBLE";
 
 const long MyBLE::interval = 2000;
+unsigned long MyBLE::previousMillis = 0;
+bool MyBLE::toggle = false;
+
+BLEClient *MyBLE::pClient;
+BLERemoteCharacteristic *MyBLE::pRemoteCharacteristic; // m
+BLERemoteService *MyBLE::pRemoteService;				// m
+MyAdvertisedDeviceCallbacks *MyBLE::myAdvertisedDeviceCallbacks;
+MyClientCallback *MyBLE::myClientCallback;
+
+BLEUUID MyBLE::serviceUUID = BLEUUID("0000ff00-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
+BLEUUID MyBLE::charUUID_tx = BLEUUID("0000ff02-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module //m
+BLEUUID MyBLE::charUUID_rx = BLEUUID("0000ff01-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module //m
 
 const int32_t MyBLE::c_cellNominalVoltage = 3700;
 const uint16_t MyBLE::c_cellAbsMin = 3000;
@@ -371,6 +385,8 @@ void MyBLE::printCellInfo() // debug all data to uart
 void MyBLE::bleStartup()
 {
     BLEDevice::init("");
+    pinMode(BLE_LED, OUTPUT);
+    digitalWrite(BLE_LED, LOW);
 
     // Retrieve a Scanner and set the callback we want to use to be informed when we
     // have detected a new device.  Specify that we want active scanning and start the
@@ -448,6 +464,7 @@ void MyBLE::disconnectFromServer() // does not work as intended, but automatical
     pClient->disconnect();
     // BLE_client_connected = false;
     LOGD(TAG, "disconnected from the BLE Server.");
+    digitalWrite(BLE_LED, LOW);
 }
 
 void MyBLE::bleRequestData()
@@ -461,11 +478,13 @@ void MyBLE::bleRequestData()
         {
             LOGD(TAG, "connected to the BLE Server.");
             // lcdConnected();
+            digitalWrite(BLE_LED, HIGH);
         }
         else
         {
             LOGD(TAG, "failed to connect to the BLE Server.");
             // lcdConnectionFailed();
+            digitalWrite(BLE_LED, LOW);
         }
         myAdvertisedDeviceCallbacks->doConnect = false;
     }
