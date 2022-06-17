@@ -6,7 +6,7 @@
 
 namespace MyLOG
 {
-    void LOGD2(String tag, String text);
+    void LOGD(String tag, String text);
 }
 
 #endif /* MY_DEBUG_HPP */

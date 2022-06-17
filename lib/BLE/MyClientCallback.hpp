@@ -1,7 +1,7 @@
 #ifndef MY_CLIENT_CALLBACK_HPP
 #define MY_CLIENT_CALLBACK_HPP
 
-#include "MyDebug2.hpp"
+#include "MyDebug.hpp"
 #include "BLEDevice.h"
 #include <Arduino.h>
 

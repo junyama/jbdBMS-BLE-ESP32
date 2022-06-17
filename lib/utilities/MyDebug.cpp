@@ -1,9 +1,9 @@
 #ifndef MY_DEBUG_CPP
 #define MY_DEBUG_CPP
 
-#include "MyDebug2.hpp"
+#include "MyDebug.hpp"
 
-void MyLOG::LOGD2(String tag, String text)
+void MyLOG::LOGD(String tag, String text)
 {
     Serial.print("[" + DateTime.toString() + "] ");
     Serial.print(tag + ": ");

@@ -24,7 +24,7 @@ void MyClientCallback::onDisconnect(BLEClient *pclient)
 {
     //BLE_client_connected = false;
     BLE_client_connected = false;
-    LOGD2(TAG, "onDisconnect");
+    LOGD(TAG, "onDisconnect");
     // lcdDisconnect();
 }
 

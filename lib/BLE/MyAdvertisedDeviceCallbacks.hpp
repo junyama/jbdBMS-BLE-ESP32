@@ -1,7 +1,7 @@
 #ifndef MY_ADVERTISE_DEVICE_HPP
 #define MY_ADVERTISE_DEVICE_HPP
 
-#include "MyDebug2.hpp"
+#include "MyDebug.hpp"
 #include "BLEDevice.h"
 #include <Arduino.h>
 
