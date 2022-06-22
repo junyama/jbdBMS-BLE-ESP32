@@ -9,7 +9,6 @@ using namespace MyLOG;
 //#include "MyClientCallback.hpp"
 
 #define commSerial Serial
-#define BLE_LED 33
 
 //---- global variables ----
 //boolean doConnect = false;
@@ -48,14 +47,14 @@ unsigned long MyBLE::previousMillis = 0;
 bool MyBLE::toggle = false;
 
 BLEClient *MyBLE::pClient;
-BLERemoteCharacteristic *MyBLE::pRemoteCharacteristic; // m
-BLERemoteService *MyBLE::pRemoteService;				// m
+BLERemoteCharacteristic *MyBLE::pRemoteCharacteristic;
+BLERemoteService *MyBLE::pRemoteService;
 MyAdvertisedDeviceCallbacks *MyBLE::myAdvertisedDeviceCallbacks;
 MyClientCallback *MyBLE::myClientCallback;
 
 BLEUUID MyBLE::serviceUUID = BLEUUID("0000ff00-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
-BLEUUID MyBLE::charUUID_tx = BLEUUID("0000ff02-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module //m
-BLEUUID MyBLE::charUUID_rx = BLEUUID("0000ff01-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module //m
+BLEUUID MyBLE::charUUID_tx = BLEUUID("0000ff02-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
+BLEUUID MyBLE::charUUID_rx = BLEUUID("0000ff01-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
 
 const int32_t MyBLE::c_cellNominalVoltage = 3700;
 const uint16_t MyBLE::c_cellAbsMin = 3000;
@@ -68,7 +67,6 @@ bool MyBLE::newPacketReceived = false;
 packBasicInfoStruct MyBLE::packBasicInfo;
 packCellInfoStruct MyBLE::packCellInfo; 
 
-//move from MyDataProcess
 int16_t MyBLE::two_ints_into16(int highbyte, int lowbyte) // turns two bytes into a single long integer
 {
     // TRACE;
@@ -321,8 +319,6 @@ void MyBLE::notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, ui
     bleCollectPacket((char *)pData, length);
 }
 
-////////
-
 void MyBLE::bmsGetInfo3()
 {
     // TRACE;
@@ -385,8 +381,6 @@ void MyBLE::printCellInfo() // debug all data to uart
 void MyBLE::bleStartup()
 {
     BLEDevice::init("");
-    pinMode(BLE_LED, OUTPUT);
-    digitalWrite(BLE_LED, LOW);
 
     // Retrieve a Scanner and set the callback we want to use to be informed when we
     // have detected a new device.  Specify that we want active scanning and start the
@@ -464,7 +458,6 @@ void MyBLE::disconnectFromServer() // does not work as intended, but automatical
     pClient->disconnect();
     // BLE_client_connected = false;
     LOGD(TAG, "disconnected from the BLE Server.");
-    digitalWrite(BLE_LED, LOW);
 }
 
 void MyBLE::bleRequestData()
@@ -478,13 +471,11 @@ void MyBLE::bleRequestData()
         {
             LOGD(TAG, "connected to the BLE Server.");
             // lcdConnected();
-            digitalWrite(BLE_LED, HIGH);
         }
         else
         {
             LOGD(TAG, "failed to connect to the BLE Server.");
             // lcdConnectionFailed();
-            digitalWrite(BLE_LED, LOW);
         }
         myAdvertisedDeviceCallbacks->doConnect = false;
     }
