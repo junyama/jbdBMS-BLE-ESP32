@@ -355,7 +355,6 @@ void MyBLE::printBasicInfo() // debug all data to uart
     Serial.printf("Balance Code High: 0x%x\n", packBasicInfo.BalanceCodeHigh);
     Serial.printf("Mosfet Status: 0x%x\n", packBasicInfo.MosfetStatus);
     LOGD(TAG, "BasicInfo END <<<<<<<<<<<<<");
-    commSerial.println();
 }
 
 void MyBLE::printCellInfo() // debug all data to uart
@@ -375,7 +374,6 @@ void MyBLE::printCellInfo() // debug all data to uart
     commSerial.printf("Average cell volt: %f\n", (float)packCellInfo.CellAvg / 1000);
     commSerial.printf("Median cell volt: %f\n", (float)packCellInfo.CellMedian / 1000);
     LOGD(TAG, "CellInfo END <<<<<<<<<<<<<");
-    commSerial.println();
 }
 
 void MyBLE::bleStartup()

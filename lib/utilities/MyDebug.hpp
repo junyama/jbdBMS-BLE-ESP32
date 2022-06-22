@@ -6,6 +6,7 @@
 
 namespace MyLOG
 {
+    extern bool DISABLE_LOGD;
     void LOGD(String tag, String text);
 }
 

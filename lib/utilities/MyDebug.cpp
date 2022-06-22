@@ -3,11 +3,16 @@
 
 #include "MyDebug.hpp"
 
+bool MyLOG::DISABLE_LOGD = false;
+
 void MyLOG::LOGD(String tag, String text)
 {
-    Serial.print("[" + DateTime.toString() + "] ");
-    Serial.print(tag + ": ");
-    Serial.println(text);
+    if (!DISABLE_LOGD)
+    {
+        Serial.print("[" + DateTime.toString() + "] ");
+        Serial.print(tag + ": ");
+        Serial.println(text);
+    }
 }
 
 #endif /* MY_DEBUG_CPP */

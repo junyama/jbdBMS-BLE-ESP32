@@ -57,6 +57,7 @@ Ambient ambient;
 
 // sleep control
 unsigned int sleepVoltageMv = 13199; // mV
+unsigned int wakeUpVoltageMv = 13399;
 
 // local functions definitions
 
@@ -233,6 +234,9 @@ void setup()
       int sleepVoltageMv_ = doc["sleepVoltageMv"];
       if (sleepVoltageMv_)
         sleepVoltageMv = sleepVoltageMv_;
+      int wakeUpVoltageMv_ = doc["wakeUpVoltageMv"];
+      if (wakeUpVoltageMv_)
+        wakeUpVoltageMv = wakeUpVoltageMv_;
     }
   }
   
@@ -294,11 +298,13 @@ void loop()
     LOGD(TAG, "new pcaket received");
     // showInfoLcd;
     MyBLE::printBasicInfo();
+    DISABLE_LOGD = true;
     LOGD(TAG, "Pack Voltage: " + String(MyBLE::packBasicInfo.Volts));
     LOGD(TAG, "BalanceCodeLow: " + String(MyBLE::packBasicInfo.BalanceCodeLow));
     LOGD(TAG, "MosfetStatus: " + String(MyBLE::packBasicInfo.MosfetStatus));
     LOGD(TAG, "CellAvg: " + String(MyBLE::packCellInfo.CellAvg));
     LOGD(TAG, "CellMedian: " + String(MyBLE::packCellInfo.CellMedian));
+    DISABLE_LOGD = false;
     MyBLE::printCellInfo();
   }
   if (MyBLE::packBasicInfo.Volts <= sleepVoltageMv && WiFi.isConnected())
@@ -308,7 +314,7 @@ void loop()
     digitalWrite(WIFI_LED, LOW);
     ambientSendIntervalMs = ambientSendIntervalBaseMs * 10;
   }
-  if (MyBLE::packBasicInfo.Volts > sleepVoltageMv && !WiFi.isConnected())
+  if (MyBLE::packBasicInfo.Volts > wakeUpVoltageMv && !WiFi.isConnected())
   {
     wifiConnect();
     LOGD(TAG, "woke up and WiFi reconnected, batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + " > " + String(sleepVoltageMv));
