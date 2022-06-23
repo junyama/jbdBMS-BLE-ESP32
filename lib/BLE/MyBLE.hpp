@@ -2,7 +2,6 @@
 #define MY_BLE_HPP
 
 #include <Arduino.h>
-//#include "MyDataProcess.hpp"
 #include "MyDebug.hpp"
 #include "BLEDevice.h"
 #include "MyAdvertisedDeviceCallbacks.hpp"
@@ -55,14 +54,16 @@ private:
 	static BLEClient *pClient;
 	static void bmsGetInfo3();
 	static void bmsGetInfo4();
+	static void bmsSetInfo();
+
 	static bool connectToServer();
 	static void sendCommand(uint8_t *data, uint32_t dataLen);
 
-	static BLERemoteCharacteristic *pRemoteCharacteristic; // m
-	static BLERemoteService *pRemoteService;				// m
+	static BLERemoteCharacteristic *pRemoteCharacteristic;
+	static BLERemoteService *pRemoteService;
 	static BLEUUID serviceUUID;
-	static BLEUUID charUUID_tx; // xiaoxiang bms original module //m
-	static BLEUUID charUUID_rx; // xiaoxiang bms original module //m
+	static BLEUUID charUUID_tx;
+	static BLEUUID charUUID_rx;
 
 	// BLEAdvertisedDevice *myDevice;
 
@@ -78,11 +79,13 @@ public:
 	static MyAdvertisedDeviceCallbacks *myAdvertisedDeviceCallbacks;
 	static MyClientCallback *myClientCallback;
 
+	/*
 	static const int32_t c_cellNominalVoltage; // mV
 	static const uint16_t c_cellAbsMin;
 	static const uint16_t c_cellAbsMax;
 	static const int32_t c_packMaxWatt;
 	static const uint16_t c_cellMaxDisbalance;
+	*/
 
 	static bool newPacketReceived;
 

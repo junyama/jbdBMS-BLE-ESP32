@@ -56,11 +56,11 @@ BLEUUID MyBLE::serviceUUID = BLEUUID("0000ff00-0000-1000-8000-00805f9b34fb"); //
 BLEUUID MyBLE::charUUID_tx = BLEUUID("0000ff02-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
 BLEUUID MyBLE::charUUID_rx = BLEUUID("0000ff01-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
 
-const int32_t MyBLE::c_cellNominalVoltage = 3700;
-const uint16_t MyBLE::c_cellAbsMin = 3000;
-const uint16_t MyBLE::c_cellAbsMax = 4200;
-const int32_t MyBLE::c_packMaxWatt = 1250;
-const uint16_t MyBLE::c_cellMaxDisbalance = 1500;
+//const int32_t MyBLE::c_cellNominalVoltage = 3700;
+//const uint16_t MyBLE::c_cellAbsMin = 3000;
+//const uint16_t MyBLE::c_cellAbsMax = 4200;
+//const int32_t MyBLE::c_packMaxWatt = 1250;
+//const uint16_t MyBLE::c_cellMaxDisbalance = 1500;
 
 bool MyBLE::newPacketReceived = false;
 
@@ -95,7 +95,7 @@ bool MyBLE::processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned i
     output->CapacityRemainAh = ((uint16_t)two_ints_into16(data[4], data[5])) * 10;
     output->CapacityRemainPercent = ((uint8_t)data[19]);
 
-    output->CapacityRemainWh = (output->CapacityRemainAh * c_cellNominalVoltage) / 1000000 * packCellInfo.NumOfCells;
+    //output->CapacityRemainWh = (output->CapacityRemainAh * c_cellNominalVoltage) / 1000000 * packCellInfo.NumOfCells;
 
     output->Temp1 = (((uint16_t)two_ints_into16(data[23], data[24])) - 2731);
     output->Temp2 = (((uint16_t)two_ints_into16(data[25], data[26])) - 2731);
@@ -331,6 +331,16 @@ void MyBLE::bmsGetInfo3()
 }
 
 void MyBLE::bmsGetInfo4()
+{
+    // TRACE;
+    //   DD  A5 04 00  FF  FC  77
+    uint8_t data[7] = {0xdd, 0xa5, 0x4, 0x0, 0xff, 0xfc, 0x77};
+    // bmsSerial.write(data, 7);
+    sendCommand(data, sizeof(data));
+    // commSerial.println("Request info4 sent");
+}
+
+void MyBLE::bmsSetInfo()
 {
     // TRACE;
     //   DD  A5 04 00  FF  FC  77
