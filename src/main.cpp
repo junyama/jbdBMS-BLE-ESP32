@@ -3,6 +3,7 @@
 #include <WiFiMulti.h>
 #include <ESPAsyncWebServer.h>
 #include <SPIFFS.h>
+#include <AsyncJson.h>
 #include <ArduinoJson.h>
 #include <ESPDateTime.h>
 #include <Ambient.h>
@@ -140,13 +141,13 @@ String getValues()
   // jsonStr += String(batteryCycleCount);
   jsonStr += ", \"batteryVoltage\": ";
   jsonStr += String(MyBLE::packBasicInfo.Volts / 10);
-  jsonStr += ", \"chargeStatus\": ";
+  jsonStr += ", \"mosfetStatus\": {\"chargeStatus\": ";
   chargeStatus = MyBLE::packBasicInfo.MosfetStatus & 1;
   jsonStr += String(chargeStatus);
   jsonStr += ", \"dischargeStatus\": ";
   dischargeStatus = MyBLE::packBasicInfo.MosfetStatus & 1 << 1;
   jsonStr += String(dischargeStatus);
-  jsonStr += ", \"batteryList\": [";
+  jsonStr += "}, \"batteryList\": [";
   jsonStr += String(MyBLE::packCellInfo.CellVolt[0]);
   for (int i = 1; i < MyBLE::packCellInfo.NumOfCells; i++)
   {
@@ -179,10 +180,22 @@ String getValues()
 
 String disconnectBLE()
 {
-  MyBLE::disconnectFromServer();
+  // MyBLE::ctrlCommand = 1;
+  return "OK";
+}
+/*
+String disableCharge()
+{
+  MyBLE::ctrlCommand = 1;
   return "OK";
 }
 
+String enableCharge()
+{
+  MyBLE::ctrlCommand = 2;
+  return "OK";
+}
+*/
 void setup()
 {
   Serial.begin(115200); // Standard hardware serial port
@@ -203,7 +216,7 @@ void setup()
     LOGD(TAG, "SPIFFS mount done");
   }
 
-// loading configuration from a file
+  // loading configuration from a file
   File fileHandle = LittleFS.open("/config.json", "r");
   if (fileHandle)
   {
@@ -239,7 +252,7 @@ void setup()
         wakeUpVoltageMv = wakeUpVoltageMv_;
     }
   }
-  
+
   // setup WiFi
   WiFi.mode(WIFI_STA);
   WiFi.hostname("JunBMS");
@@ -271,10 +284,52 @@ void setup()
             { request->send(LittleFS, "/log.txt"); });
 
   server.on("/getValues", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "text/html", getValues().c_str()); });
+            { request->send_P(200, "appicatlion/json", getValues().c_str()); });
 
   server.on("/disconnectBLE", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send_P(200, "text/plain", disconnectBLE().c_str()); });
+  /*
+  server.on("/disableCharge", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send_P(200, "text/plain", disableCharge().c_str()); });
+
+  server.on("/enableCharge", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send_P(200, "text/plain", enableCharge().c_str()); });
+
+  server.on("/mosfetCtrl", HTTP_POST, [](AsyncWebServerRequest *request)
+            { request->send_P(200, "appicatlion/json", getValues().c_str()); });
+  */
+
+  AsyncCallbackJsonWebHandler *handler = new AsyncCallbackJsonWebHandler("/mosfetCtrl", [](AsyncWebServerRequest *request, JsonVariant &json)
+                                                                         {
+    //LOGD(TAG, "/mosfetCtrl called");
+    JsonObject jsonObj = json.as<JsonObject>();
+    String jsonStr;
+    serializeJson(jsonObj, jsonStr);
+    LOGD(TAG, "posted json: " + jsonStr);
+    MyBLE::ctrlCommand = 1;
+    MyBLE::commandParam = (byte)jsonObj["chargeStatus"] + (byte)jsonObj["dischargeStatus"] * 2;
+    /*
+    int p1 = jsonObj["p1"] | -1;
+
+    const char *p_param = jsonObj["param"];
+    if( p_param != NULL ){
+      if (decode_base64_length((unsigned char *)p_param) <= sizeof(buffer) ){
+        int length = decode_base64((unsigned char *)p_param, buffer);
+        lcd.drawJpg(buffer, length);
+      }
+    }
+    */
+    //request->send(200, "application/json", "{\"message\": \"OK\"}");
+    AsyncJsonResponse *response = new AsyncJsonResponse();
+    JsonObject root = response->getRoot();
+    //root["p1"] = p1;
+    //root["message"] = "Hello World";
+    root["dischargeStatus"] = dischargeStatus;
+    root["chargeStatus"] = chargeStatus;
+    response->setLength();
+    request->send(response); });
+
+  server.addHandler(handler);
 
   server.begin();
 
@@ -295,8 +350,8 @@ void loop()
   MyBLE::bleRequestData();
   if (MyBLE::newPacketReceived == true)
   {
-    LOGD(TAG, "new pcaket received");
-    // showInfoLcd;
+    LOGD(TAG, "newPacketReceived == true");
+    DISABLE_LOGD = true;
     MyBLE::printBasicInfo();
     DISABLE_LOGD = true;
     LOGD(TAG, "Pack Voltage: " + String(MyBLE::packBasicInfo.Volts));
@@ -304,8 +359,8 @@ void loop()
     LOGD(TAG, "MosfetStatus: " + String(MyBLE::packBasicInfo.MosfetStatus));
     LOGD(TAG, "CellAvg: " + String(MyBLE::packCellInfo.CellAvg));
     LOGD(TAG, "CellMedian: " + String(MyBLE::packCellInfo.CellMedian));
-    DISABLE_LOGD = false;
     MyBLE::printCellInfo();
+    DISABLE_LOGD = false;
   }
   if (MyBLE::packBasicInfo.Volts <= sleepVoltageMv && WiFi.isConnected())
   {

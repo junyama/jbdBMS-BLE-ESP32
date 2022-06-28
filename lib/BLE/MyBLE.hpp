@@ -54,7 +54,6 @@ private:
 	static BLEClient *pClient;
 	static void bmsGetInfo3();
 	static void bmsGetInfo4();
-	static void bmsSetInfo();
 
 	static bool connectToServer();
 	static void sendCommand(uint8_t *data, uint32_t dataLen);
@@ -70,15 +69,20 @@ private:
 	static int16_t two_ints_into16(int highbyte, int lowbyte); // turns two bytes into a single long integer
 	static bool processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned int dataLen);
 	static bool processCellInfo(packCellInfoStruct *output, byte *data, unsigned int dataLen);
+	static bool processDeviceInfo(char *output, byte *data, unsigned int dataLen);
 	static bool isPacketValid(byte *packet); // check if packet is valid
 	static bool bmsProcessPacket(byte *packet);
 	static void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify);
 	static bool bleCollectPacket(char *data, uint32_t dataSize); // reconstruct packet from BLE incomming data, called by notifyCallback function
+	//static void bmsDisableDischarge();
+	//static void bmsEnableDischarge();
+	static void bmsMosfetCtrl();
 
 public:
 	static MyAdvertisedDeviceCallbacks *myAdvertisedDeviceCallbacks;
 	static MyClientCallback *myClientCallback;
-
+	static byte ctrlCommand;
+	static byte commandParam;
 	/*
 	static const int32_t c_cellNominalVoltage; // mV
 	static const uint16_t c_cellAbsMin;
@@ -91,13 +95,16 @@ public:
 
 	static packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
 	static packCellInfoStruct packCellInfo;	  // here shall be the latest data got from BMS
+	static char *deviceName;
 
-	//MyBLE();
+	// MyBLE();
 	static void printBasicInfo(); // debug all data to uart
 	static void printCellInfo();  // debug all data to uart
 	static void bleStartup();
 	static void disconnectFromServer(); // does not work as intended, but automatically reconnected
 	static void bleRequestData();
+	static void bmsDisableCharge();
+	static void bmsEnableCharge();
 };
 
 #endif /* MY_BLE_HPP */

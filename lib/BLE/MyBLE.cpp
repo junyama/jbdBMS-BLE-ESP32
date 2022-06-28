@@ -11,26 +11,26 @@ using namespace MyLOG;
 #define commSerial Serial
 
 //---- global variables ----
-//boolean doConnect = false;
-//boolean BLE_client_connected = false;
-//boolean doScan = false;
+// boolean doConnect = false;
+// boolean BLE_client_connected = false;
+// boolean doScan = false;
 
-//packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
-// packEepromStruct packEeprom;       // here shall be the latest data got from BMS
-//packCellInfoStruct packCellInfo; // here shall be the latest data got from BMS
+// packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
+//  packEepromStruct packEeprom;       // here shall be the latest data got from BMS
+// packCellInfoStruct packCellInfo; // here shall be the latest data got from BMS
 
 // static unsigned long previousMillis = 0;
 // static const long interval = 2000;
 
 // static bool toggle = false;
-//bool newPacketReceived = false;
+// bool newPacketReceived = false;
 
 //  ----- BLE stuff -----
 // BLERemoteCharacteristic *pRemoteCharacteristic; //m
-//BLEAdvertisedDevice *myDevice;
+// BLEAdvertisedDevice *myDevice;
 // BLERemoteService *pRemoteService; //m
 //  The remote service we wish to connect to. Needs check/change when other BLE module used.
-//BLEUUID serviceUUID("0000ff00-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
+// BLEUUID serviceUUID("0000ff00-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
 // BLEUUID charUUID_tx("0000ff02-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module //m
 // BLEUUID charUUID_rx("0000ff01-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module //m
 
@@ -45,6 +45,8 @@ const String MyBLE::TAG = "MyBLE";
 const long MyBLE::interval = 2000;
 unsigned long MyBLE::previousMillis = 0;
 bool MyBLE::toggle = false;
+byte MyBLE::ctrlCommand = 0;
+byte MyBLE::commandParam = 0;
 
 BLEClient *MyBLE::pClient;
 BLERemoteCharacteristic *MyBLE::pRemoteCharacteristic;
@@ -56,16 +58,17 @@ BLEUUID MyBLE::serviceUUID = BLEUUID("0000ff00-0000-1000-8000-00805f9b34fb"); //
 BLEUUID MyBLE::charUUID_tx = BLEUUID("0000ff02-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
 BLEUUID MyBLE::charUUID_rx = BLEUUID("0000ff01-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module
 
-//const int32_t MyBLE::c_cellNominalVoltage = 3700;
-//const uint16_t MyBLE::c_cellAbsMin = 3000;
-//const uint16_t MyBLE::c_cellAbsMax = 4200;
-//const int32_t MyBLE::c_packMaxWatt = 1250;
-//const uint16_t MyBLE::c_cellMaxDisbalance = 1500;
+// const int32_t MyBLE::c_cellNominalVoltage = 3700;
+// const uint16_t MyBLE::c_cellAbsMin = 3000;
+// const uint16_t MyBLE::c_cellAbsMax = 4200;
+// const int32_t MyBLE::c_packMaxWatt = 1250;
+// const uint16_t MyBLE::c_cellMaxDisbalance = 1500;
 
 bool MyBLE::newPacketReceived = false;
 
 packBasicInfoStruct MyBLE::packBasicInfo;
-packCellInfoStruct MyBLE::packCellInfo; 
+packCellInfoStruct MyBLE::packCellInfo;
+char *MyBLE::deviceName;
 
 int16_t MyBLE::two_ints_into16(int highbyte, int lowbyte) // turns two bytes into a single long integer
 {
@@ -95,7 +98,7 @@ bool MyBLE::processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned i
     output->CapacityRemainAh = ((uint16_t)two_ints_into16(data[4], data[5])) * 10;
     output->CapacityRemainPercent = ((uint8_t)data[19]);
 
-    //output->CapacityRemainWh = (output->CapacityRemainAh * c_cellNominalVoltage) / 1000000 * packCellInfo.NumOfCells;
+    // output->CapacityRemainWh = (output->CapacityRemainAh * c_cellNominalVoltage) / 1000000 * packCellInfo.NumOfCells;
 
     output->Temp1 = (((uint16_t)two_ints_into16(data[23], data[24])) - 2731);
     output->Temp2 = (((uint16_t)two_ints_into16(data[25], data[26])) - 2731);
@@ -112,8 +115,8 @@ bool MyBLE::processCellInfo(packCellInfoStruct *output, byte *data, unsigned int
     uint16_t _cellSum = 0;
     uint16_t _cellMin = 5000;
     uint16_t _cellMax = 0;
-    //uint16_t _cellAvg;
-    //uint16_t _cellDiff;
+    // uint16_t _cellAvg;
+    // uint16_t _cellDiff;
 
     output->NumOfCells = dataLen / 2; // Data length * 2 is number of cells !!!!!!
 
@@ -181,6 +184,16 @@ bool MyBLE::processCellInfo(packCellInfoStruct *output, byte *data, unsigned int
     return true;
 }
 
+bool MyBLE::processDeviceInfo(char *output, byte *data, unsigned int dataLen)
+{
+    for (byte i = 0; i < data[0]; i++)
+    {
+        output[i] = data[i];
+    }
+    LOGD(TAG, "Device Name: " + String(output));
+    return true;
+}
+
 bool MyBLE::isPacketValid(byte *packet) // check if packet is valid
 {
     // TRACE;
@@ -227,9 +240,10 @@ bool MyBLE::isPacketValid(byte *packet) // check if packet is valid
 
 bool MyBLE::bmsProcessPacket(byte *packet)
 {
-    const byte cBasicInfo3 = 3; // type of packet 3= basic info
-    const byte cCellInfo4 = 4;  // type of packet 4= individual cell info
-                                // TRACE;
+    const byte cBasicInfo3 = 3;   // type of packet 3= basic info
+    const byte cCellInfo4 = 4;    // type of packet 4= individual cell info
+    const byte cMOSFETCtrl = 0xE1; // type of packet E1= MOSFET Control
+    // TRACE;
     bool isValid = isPacketValid(packet);
 
     if (isValid != true)
@@ -249,24 +263,33 @@ bool MyBLE::bmsProcessPacket(byte *packet)
     {
     case cBasicInfo3:
     {
-        // Process basic info
+        MyLOG::DISABLE_LOGD = true;
+        LOGD(TAG, "bmsProcessPacket, process BasicInfo");
+        MyLOG::DISABLE_LOGD = false;
         result = processBasicInfo(&packBasicInfo, data, dataLen);
         newPacketReceived = true;
         break;
     }
-
     case cCellInfo4:
     {
+        MyLOG::DISABLE_LOGD = true;
+        LOGD(TAG, "bmsProcessPacket, process CellInfo");
+        MyLOG::DISABLE_LOGD = false;
         result = processCellInfo(&packCellInfo, data, dataLen);
         newPacketReceived = true;
         break;
     }
-
+    case cMOSFETCtrl:
+    {
+        LOGD(TAG, "bmsProcessPacket, process MOSFETCtrl");
+        // result = processDeviceInfo(deviceName, data, dataLen);
+        newPacketReceived = true;
+        break;
+    }
     default:
         result = false;
         Serial.printf("Unsupported packet type detected. Type: %d", pHeader->type);
     }
-
     return result;
 }
 
@@ -339,51 +362,147 @@ void MyBLE::bmsGetInfo4()
     sendCommand(data, sizeof(data));
     // commSerial.println("Request info4 sent");
 }
-
-void MyBLE::bmsSetInfo()
+/*
+void MyBLE::bmsDisableCharge()
 {
-    // TRACE;
-    //   DD  A5 04 00  FF  FC  77
-    uint8_t data[7] = {0xdd, 0xa5, 0x4, 0x0, 0xff, 0xfc, 0x77};
+    //   DD  5A E1 02  00  01 FF 1C  77
+    uint8_t data[9] = {0xdd, 0x5a, 0xe1, 0x02, 0x00, 0x01, 0xff, 0x1c, 0x77};
     // bmsSerial.write(data, 7);
     sendCommand(data, sizeof(data));
     // commSerial.println("Request info4 sent");
+    packBasicInfo.MosfetStatus &= ~1;
+    //delay(500);
+    LOGD(TAG, "DisableCharge sent");
+}
+
+void MyBLE::bmsEnableCharge()
+{
+    //   DD  5A E1 02  00  00 FF 1D  77
+    uint8_t data[9] = {0xdd, 0x5a, 0xe1, 0x02, 0x00, 0x00, 0xff, 0x1d, 0x77};
+    // bmsSerial.write(data, 7);
+    sendCommand(data, sizeof(data));
+    // commSerial.println("Request info4 sent");
+    packBasicInfo.MosfetStatus |= 1;
+    //delay(500);
+    LOGD(TAG, "EnableCharge sent");
+}
+
+void MyBLE::bmsDisableDischarge()
+{
+    //   DD  5A E1 02  00  01 FF 1C  77
+    uint8_t data[9] = {0xdd, 0x5a, 0xe1, 0x02, 0x00, 0x02, 0xff, 0x1b, 0x77};
+    // bmsSerial.write(data, 7);
+    sendCommand(data, sizeof(data));
+    // commSerial.println("Request info4 sent");
+    packBasicInfo.MosfetStatus &= ~1;
+    //delay(500);
+    LOGD(TAG, "DisableCharge sent");
+}
+
+void MyBLE::bmsEnableDischarge()
+{
+    //   DD  5A E1 02  00  00 FF 1D  77
+    uint8_t data[9] = {0xdd, 0x5a, 0xe1, 0x02, 0x00, 0x00, 0xff, 0x1d, 0x77};
+    // bmsSerial.write(data, 7);
+    sendCommand(data, sizeof(data));
+    // commSerial.println("Request info4 sent");
+    packBasicInfo.MosfetStatus |= 1;
+    //delay(500);
+    LOGD(TAG, "EnableCharge sent");
+}
+*/
+
+void MyBLE::bmsMosfetCtrl()
+{
+    LOGD(TAG, "bmsMosfetCtrl(" + String(commandParam) + ") sent");
+    switch (commandParam)
+    {
+    case 0:
+    {
+        //   DD  5A E1 02  00  03 FF 1A  77
+        uint8_t data[9] = {0xdd, 0x5a, 0xe1, 0x02, 0x00, 0x03, 0xff, 0x1a, 0x77};
+        // bmsSerial.write(data, 7);
+        //delay(500);
+        sendCommand(data, sizeof(data));
+        // commSerial.println("Request info4 sent");
+        //packBasicInfo.MosfetStatus &= ~1;
+        LOGD(TAG, "Disable Charge and Dischage sent");
+        break;
+    }
+    case 1:
+    {
+        //   DD  5A E1 02  00  02 FF 1B  77
+        uint8_t data[9] = {0xdd, 0x5a, 0xe1, 0x02, 0x00, 0x02, 0xff, 0x1b, 0x77};
+        //delay(500);
+        sendCommand(data, sizeof(data));
+        packBasicInfo.MosfetStatus &= ~1;
+        // delay(500);
+        LOGD(TAG, "Disable Discharge sent");
+        break;
+    }
+    case 2:
+    {
+        // DD  5A E1 02  00  01 FF 1C  77
+        uint8_t data[9] = {0xdd, 0x5a, 0xe1, 0x02, 0x00, 0x01, 0xff, 0x1c, 0x77};
+        // bmsSerial.write(data, 7);
+        sendCommand(data, sizeof(data));
+        // commSerial.println("Request info4 sent");
+        //packBasicInfo.MosfetStatus &= ~1;
+        // delay(500);
+        LOGD(TAG, "Enable Disharge sent");
+        break;
+    }
+    case 3:
+    {
+        //   DD  5A E1 02  00  00 FF 1D  77
+        uint8_t data[9] = {0xdd, 0x5a, 0xe1, 0x02, 0x00, 0x00, 0xff, 0x1d, 0x77};
+        sendCommand(data, sizeof(data));
+        packBasicInfo.MosfetStatus |= 1;
+        // delay(500);
+        LOGD(TAG, "Enable Charge and Discharge sent");
+        break;
+    }
+    }
 }
 
 void MyBLE::printBasicInfo() // debug all data to uart
 {
-    // TRACE;
-    commSerial.println();
-    LOGD(TAG, "BasicInfo Beging >>>>>>>>>>");
-    Serial.printf("Total voltage: %f\n", (float)packBasicInfo.Volts / 1000);
-    Serial.printf("Amps: %f\n", (float)packBasicInfo.Amps / 1000);
-    Serial.printf("CapacityRemainAh: %f\n", (float)packBasicInfo.CapacityRemainAh / 1000);
-    Serial.printf("CapacityRemainPercent: %d\n", packBasicInfo.CapacityRemainPercent);
-    Serial.printf("Temp1: %f\n", (float)packBasicInfo.Temp1 / 10);
-    Serial.printf("Temp2: %f\n", (float)packBasicInfo.Temp2 / 10);
-    Serial.printf("Balance Code Low: 0x%x\n", packBasicInfo.BalanceCodeLow);
-    Serial.printf("Balance Code High: 0x%x\n", packBasicInfo.BalanceCodeHigh);
-    Serial.printf("Mosfet Status: 0x%x\n", packBasicInfo.MosfetStatus);
-    LOGD(TAG, "BasicInfo END <<<<<<<<<<<<<");
+    if (!MyLOG::DISABLE_LOGD)
+    {
+        commSerial.println();
+        LOGD(TAG, "BasicInfo Beging >>>>>>>>>>");
+        Serial.printf("Total voltage: %f\n", (float)packBasicInfo.Volts / 1000);
+        Serial.printf("Amps: %f\n", (float)packBasicInfo.Amps / 1000);
+        Serial.printf("CapacityRemainAh: %f\n", (float)packBasicInfo.CapacityRemainAh / 1000);
+        Serial.printf("CapacityRemainPercent: %d\n", packBasicInfo.CapacityRemainPercent);
+        Serial.printf("Temp1: %f\n", (float)packBasicInfo.Temp1 / 10);
+        Serial.printf("Temp2: %f\n", (float)packBasicInfo.Temp2 / 10);
+        Serial.printf("Balance Code Low: 0x%x\n", packBasicInfo.BalanceCodeLow);
+        Serial.printf("Balance Code High: 0x%x\n", packBasicInfo.BalanceCodeHigh);
+        Serial.printf("Mosfet Status: 0x%x\n", packBasicInfo.MosfetStatus);
+        LOGD(TAG, "BasicInfo END <<<<<<<<<<<<<");
+    }
 }
 
 void MyBLE::printCellInfo() // debug all data to uart
 {
-    // TRACE;
-    commSerial.println();
-    LOGD(TAG, "CellInfo Beging >>>>>>>>>>");
-    commSerial.printf("Number of cells: %u\n", packCellInfo.NumOfCells);
-    for (byte i = 1; i <= packCellInfo.NumOfCells; i++)
+    if (!MyLOG::DISABLE_LOGD)
     {
-        commSerial.printf("Cell no. %u", i);
-        commSerial.printf("   %f\n", (float)packCellInfo.CellVolt[i - 1] / 1000);
+        commSerial.println();
+        LOGD(TAG, "CellInfo Beging >>>>>>>>>>");
+        commSerial.printf("Number of cells: %u\n", packCellInfo.NumOfCells);
+        for (byte i = 1; i <= packCellInfo.NumOfCells; i++)
+        {
+            commSerial.printf("Cell no. %u", i);
+            commSerial.printf("   %f\n", (float)packCellInfo.CellVolt[i - 1] / 1000);
+        }
+        commSerial.printf("Max cell volt: %f\n", (float)packCellInfo.CellMax / 1000);
+        commSerial.printf("Min cell volt: %f\n", (float)packCellInfo.CellMin / 1000);
+        commSerial.printf("Difference cell volt: %f\n", (float)packCellInfo.CellDiff / 1000);
+        commSerial.printf("Average cell volt: %f\n", (float)packCellInfo.CellAvg / 1000);
+        commSerial.printf("Median cell volt: %f\n", (float)packCellInfo.CellMedian / 1000);
+        LOGD(TAG, "CellInfo END <<<<<<<<<<<<<");
     }
-    commSerial.printf("Max cell volt: %f\n", (float)packCellInfo.CellMax / 1000);
-    commSerial.printf("Min cell volt: %f\n", (float)packCellInfo.CellMin / 1000);
-    commSerial.printf("Difference cell volt: %f\n", (float)packCellInfo.CellDiff / 1000);
-    commSerial.printf("Average cell volt: %f\n", (float)packCellInfo.CellAvg / 1000);
-    commSerial.printf("Median cell volt: %f\n", (float)packCellInfo.CellMedian / 1000);
-    LOGD(TAG, "CellInfo END <<<<<<<<<<<<<");
 }
 
 void MyBLE::bleStartup()
@@ -396,7 +515,7 @@ void MyBLE::bleStartup()
     BLEScan *pBLEScan = BLEDevice::getScan();
     myAdvertisedDeviceCallbacks = new MyAdvertisedDeviceCallbacks(serviceUUID);
     pBLEScan->setAdvertisedDeviceCallbacks(myAdvertisedDeviceCallbacks);
-    //pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+    // pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
     pBLEScan->setInterval(1349);
     pBLEScan->setWindow(449);
     pBLEScan->setActiveScan(true);
@@ -415,7 +534,7 @@ bool MyBLE::connectToServer()
     // lcdConnectingStatus(1);
     myClientCallback = new MyClientCallback();
     pClient->setClientCallbacks(myClientCallback);
-    //pClient->setClientCallbacks(new MyClientCallback());
+    // pClient->setClientCallbacks(new MyClientCallback());
 
     // Connect to the remove BLE Server.
     pClient->connect(myAdvertisedDeviceCallbacks->myDevice); // if you pass BLEAdvertisedDevice instead of address, it will be recognized type of peer device address (public or private)
@@ -499,22 +618,42 @@ void MyBLE::bleRequestData()
             previousMillis = currentMillis;
             // LOGD(TAG, "showing Info");
             //  showInfoLcd();
-
-            if (toggle) // alternate info3 and info4
+            switch (ctrlCommand) // ctrlCommand or alternate Info3 and Info4
             {
-                bmsGetInfo3();
-                // LOGD(TAG, "showing BasicInfo");
-                //  showBasicInfo();
-                newPacketReceived = false;
-            }
-            else
+            case 1:
             {
-                bmsGetInfo4();
-                // LOGD(TAG, "showing CellInfo");
-                //  showCellInfo();
+                bmsMosfetCtrl();
+                ctrlCommand = 0;
                 newPacketReceived = false;
+                break;
             }
-            toggle = !toggle;
+            case 2:
+            {
+                // bmsMosfetCtrl();
+                ctrlCommand = 0;
+                newPacketReceived = false;
+                break;
+            }
+            default:
+            {
+                if (toggle) // alternate info3 and info4
+                {
+                    bmsGetInfo3();
+                    // LOGD(TAG, "showing BasicInfo");
+                    //  showBasicInfo();
+                    newPacketReceived = false;
+                }
+                else
+                {
+                    bmsGetInfo4();
+                    // LOGD(TAG, "showing CellInfo");
+                    //  showCellInfo();
+                    newPacketReceived = false;
+                }
+                toggle = !toggle;
+                break;
+            }
+            }
         }
     }
     else if (myAdvertisedDeviceCallbacks->doScan)

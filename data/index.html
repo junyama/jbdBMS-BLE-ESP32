@@ -164,7 +164,9 @@
     -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.1.4/raphael-min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/justgage/1.5.1/justgage.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script>
+        var bmsStatus;
         function toggleSwitch(element, mode) {
             switch (mode) {
                 case 3:
@@ -178,7 +180,54 @@
                     if (element.classList.contains('checked')) element.classList.remove('checked');
                     break;
             }
-
+        };
+        var chargeStatusChanged = false;
+        function chargeSwitch(element) {
+            if (element.classList.contains('checked')) {
+                fetch('/disableCharge')
+                    .then(response => {
+                        element.classList.remove('checked');
+                    })
+                    .catch((error) => {
+                        console.error('Error:', error);
+                    });
+            }
+            else {
+                fetch('/enableCharge')
+                    .then(response => {
+                        element.classList.add('checked');
+                    })
+                    .catch((error) => {
+                        console.error('Error:', error);
+                    });
+            }
+            chargeStatusChanged = true;
+        };
+        function mosfetControl(element) {
+            if (element.id == "chargeStatusId") bmsStatus.mosfetStatus.chargeStatus ^= 1;
+            else bmsStatus.mosfetStatus.dischargeStatus ^= 1;
+            $.ajax({
+                type: "POST",
+                url: '/mosfetCtrl',
+                data: JSON.stringify(bmsStatus.mosfetStatus),
+                contentType: 'application/json',
+                dataType: "json",
+                success: function (data) {
+                    console.log('mosfetControl sucseeded: ' + JSON.stringify(data))
+                },
+                error: function (data) {
+                    alert(data.response);
+                }
+            });
+            /*
+            fetch('/mosfetCtrl', { method: 'POST', headers: { 'Conten-Type': 'application/json' }, body: JSON.stringify(bmsStatus.mosfetStatus) })
+                .then(response => {
+                    console.log('mosfetControl');
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                });
+                */
         };
     </script>
 </head>
@@ -233,7 +282,7 @@
                 <div class="switch-title">
                     Charging
                 </div>
-                <div class="toggle" id="chargeStatusId" onclick="toggleSwitch(this, 3)">
+                <div class="toggle" id="chargeStatusId" onclick="mosfetControl(this)">
                     <input type="checkbox" name="chargeStatus" />
                 </div>
             </td>
@@ -241,7 +290,7 @@
                 <div class="switch-title">
                     Discharg
                 </div>
-                <div class="toggle" id="dischargeStatusId" onclick="toggleSwitch(this, 3)">
+                <div class="toggle" id="dischargeStatusId" onclick="mosfetControl(this)">
                     <input type="checkbox" name="dischargeStatus" />
                 </div>
             </td>
@@ -463,6 +512,7 @@
                 fetch("/getValues")
                     .then(response => response.json())
                     .then(data => {
+                        bmsStatus = data;
                         var value = data.batteryCurrent / 100;
                         if (value >= 0) {
                             current.refresh(value, 40, 0);
@@ -484,8 +534,8 @@
                         cell3Voltage.update('valueFontColor', cellColorChange(data.batteryList[2], data.cellMedian));
                         cell4Voltage.update('valueFontColor', cellColorChange(data.batteryList[3], data.cellMedian));
 
-                        toggleSwitch(document.getElementById('chargeStatusId'), data.chargeStatus);
-                        toggleSwitch(document.getElementById('dischargeStatusId'), data.dischargeStatus);
+                        toggleSwitch(document.getElementById('chargeStatusId'), data.mosfetStatus.chargeStatus);
+                        toggleSwitch(document.getElementById('dischargeStatusId'), data.mosfetStatus.dischargeStatus);
                         toggleSwitch(document.getElementById('BLEStatusId'), data.BLEConnected);
                         for (i = 0; i < 4; i++) {
                             toggleSwitch(document.getElementById('cellBalanceId-' + i), data.cellBalanceList[i]);
