@@ -362,55 +362,6 @@ void MyBLE::bmsGetInfo4()
     sendCommand(data, sizeof(data));
     // commSerial.println("Request info4 sent");
 }
-/*
-void MyBLE::bmsDisableCharge()
-{
-    //   DD  5A E1 02  00  01 FF 1C  77
-    uint8_t data[9] = {0xdd, 0x5a, 0xe1, 0x02, 0x00, 0x01, 0xff, 0x1c, 0x77};
-    // bmsSerial.write(data, 7);
-    sendCommand(data, sizeof(data));
-    // commSerial.println("Request info4 sent");
-    packBasicInfo.MosfetStatus &= ~1;
-    //delay(500);
-    LOGD(TAG, "DisableCharge sent");
-}
-
-void MyBLE::bmsEnableCharge()
-{
-    //   DD  5A E1 02  00  00 FF 1D  77
-    uint8_t data[9] = {0xdd, 0x5a, 0xe1, 0x02, 0x00, 0x00, 0xff, 0x1d, 0x77};
-    // bmsSerial.write(data, 7);
-    sendCommand(data, sizeof(data));
-    // commSerial.println("Request info4 sent");
-    packBasicInfo.MosfetStatus |= 1;
-    //delay(500);
-    LOGD(TAG, "EnableCharge sent");
-}
-
-void MyBLE::bmsDisableDischarge()
-{
-    //   DD  5A E1 02  00  01 FF 1C  77
-    uint8_t data[9] = {0xdd, 0x5a, 0xe1, 0x02, 0x00, 0x02, 0xff, 0x1b, 0x77};
-    // bmsSerial.write(data, 7);
-    sendCommand(data, sizeof(data));
-    // commSerial.println("Request info4 sent");
-    packBasicInfo.MosfetStatus &= ~1;
-    //delay(500);
-    LOGD(TAG, "DisableCharge sent");
-}
-
-void MyBLE::bmsEnableDischarge()
-{
-    //   DD  5A E1 02  00  00 FF 1D  77
-    uint8_t data[9] = {0xdd, 0x5a, 0xe1, 0x02, 0x00, 0x00, 0xff, 0x1d, 0x77};
-    // bmsSerial.write(data, 7);
-    sendCommand(data, sizeof(data));
-    // commSerial.println("Request info4 sent");
-    packBasicInfo.MosfetStatus |= 1;
-    //delay(500);
-    LOGD(TAG, "EnableCharge sent");
-}
-*/
 
 void MyBLE::bmsMosfetCtrl()
 {
@@ -629,7 +580,7 @@ void MyBLE::bleRequestData()
             }
             case 2:
             {
-                // bmsMosfetCtrl();
+                disconnectFromServer();
                 ctrlCommand = 0;
                 newPacketReceived = false;
                 break;
