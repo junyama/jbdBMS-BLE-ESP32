@@ -181,6 +181,7 @@
                     break;
             }
         };
+        /*
         var chargeStatusChanged = false;
         function chargeSwitch(element) {
             if (element.classList.contains('checked')) {
@@ -203,6 +204,7 @@
             }
             chargeStatusChanged = true;
         };
+        */
         function mosfetControl(element) {
             if (element.id == "chargeStatusId") bmsStatus.mosfetStatus.chargeStatus ^= 1;
             else bmsStatus.mosfetStatus.dischargeStatus ^= 1;
@@ -229,6 +231,15 @@
                 });
                 */
         };
+        function disconnectBLE(element) {
+            fetch('/disconnectBLE')
+                    .then(response => {
+                        console.log('disconnectBLE');
+                    })
+                    .catch((error) => {
+                        console.error('Error:', error);
+                    });
+        }
     </script>
 </head>
 
@@ -298,7 +309,7 @@
                 <div class="switch-title">
                     BLE
                 </div>
-                <div class="toggle" id="BLEStatusId" onclick="toggleSwitch(this, 3)">
+                <div class="toggle" id="BLEStatusId" onclick="disconnectBLE(this)">
                     <input type="checkbox" name="BLEStatus" />
                 </div>
             </td>

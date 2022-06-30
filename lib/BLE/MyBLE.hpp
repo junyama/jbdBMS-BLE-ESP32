@@ -103,8 +103,8 @@ public:
 	static void bleStartup();
 	static void disconnectFromServer(); // does not work as intended, but automatically reconnected
 	static void bleRequestData();
-	static void bmsDisableCharge();
-	static void bmsEnableCharge();
+	//static void bmsDisableCharge();
+	//static void bmsEnableCharge();
 };
 
 #endif /* MY_BLE_HPP */

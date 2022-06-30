@@ -44,13 +44,10 @@ AsyncWebServer server(80);
 // int batteryTemp1, batteryTemp2, batteryChargePercentage, batteryCurrent, batteryVoltage, cellDiffVoltage, batteryCycleCount, mosFet, cellBalance;
 bool cellBalanceList[4];
 bool chargeStatus, dischargeStatus;
-// bool cellBalance1, cellBalance2, cellBalance3, cellBalance4;
 
 // Ambient service
-// const unsigned int channelId = 50366; //Jun BMS (ESP32)
-unsigned int channelId = 8630; // Battery Power Meter
-// const char *writeKey = "ccb476294fe16acd";
-String writeKey = "b473180b50bf1709";
+unsigned int channelId = 0000;
+String writeKey = "xxxxxxxxxxxxxx";
 unsigned long ambientlLastSent = 0;
 unsigned int ambientSendIntervalBaseMs = 60 * 1000; // milli sec
 unsigned int ambientSendIntervalMs = ambientSendIntervalBaseMs;
@@ -180,22 +177,10 @@ String getValues()
 
 String disconnectBLE()
 {
-  // MyBLE::ctrlCommand = 1;
-  return "OK";
-}
-/*
-String disableCharge()
-{
-  MyBLE::ctrlCommand = 1;
-  return "OK";
-}
-
-String enableCharge()
-{
   MyBLE::ctrlCommand = 2;
   return "OK";
 }
-*/
+
 void setup()
 {
   Serial.begin(115200); // Standard hardware serial port
@@ -217,6 +202,8 @@ void setup()
   }
 
   // loading configuration from a file
+  // Allocate the JSON document
+  StaticJsonDocument<512> configJson;
   File fileHandle = LittleFS.open("/config.json", "r");
   if (fileHandle)
   {
@@ -224,11 +211,8 @@ void setup()
     LOGD(TAG, "config.json: " + jsonStr);
     fileHandle.close();
 
-    // Allocate the JSON document
-    StaticJsonDocument<256> doc;
-
     // Deserialize the JSON document
-    DeserializationError error = deserializeJson(doc, jsonStr);
+    DeserializationError error = deserializeJson(configJson, jsonStr);
 
     // Test if parsing succeeds.
     if (error)
@@ -238,16 +222,16 @@ void setup()
     }
     else
     {
-      int channelId_ = doc["ambient"]["channelId"];
+      int channelId_ = configJson["ambient"]["channelId"];
       if (channelId_)
         channelId = channelId_;
-      const char *writeKey_ = doc["ambient"]["writeKey"];
+      const char *writeKey_ = configJson["ambient"]["writeKey"];
       if (writeKey_)
         writeKey = writeKey_;
-      int sleepVoltageMv_ = doc["sleepVoltageMv"];
+      int sleepVoltageMv_ = configJson["sleepVoltageMv"];
       if (sleepVoltageMv_)
         sleepVoltageMv = sleepVoltageMv_;
-      int wakeUpVoltageMv_ = doc["wakeUpVoltageMv"];
+      int wakeUpVoltageMv_ = configJson["wakeUpVoltageMv"];
       if (wakeUpVoltageMv_)
         wakeUpVoltageMv = wakeUpVoltageMv_;
     }
@@ -257,9 +241,10 @@ void setup()
   WiFi.mode(WIFI_STA);
   WiFi.hostname("JunBMS");
   // Add list of wifi networks
-  wifiMulti.addAP("Jun-Home-AP", "takehiro");
-  wifiMulti.addAP("Jun-FS020W", "takehiro");
-  wifiMulti.addAP("Jun-Moto-Z2-Play", "takehiro");
+  for (int i = 0; i < configJson["wifi"].size(); i++)
+  {
+    wifiMulti.addAP(configJson["wifi"][i]["ssid"], configJson["wifi"][i]["pass"]);
+  }
   LOGD(TAG, "going to scann WiFi");
   wifiScann();
   LOGD(TAG, "going to connect WiFi");
@@ -308,22 +293,10 @@ void setup()
     LOGD(TAG, "posted json: " + jsonStr);
     MyBLE::ctrlCommand = 1;
     MyBLE::commandParam = (byte)jsonObj["chargeStatus"] + (byte)jsonObj["dischargeStatus"] * 2;
-    /*
-    int p1 = jsonObj["p1"] | -1;
 
-    const char *p_param = jsonObj["param"];
-    if( p_param != NULL ){
-      if (decode_base64_length((unsigned char *)p_param) <= sizeof(buffer) ){
-        int length = decode_base64((unsigned char *)p_param, buffer);
-        lcd.drawJpg(buffer, length);
-      }
-    }
-    */
     //request->send(200, "application/json", "{\"message\": \"OK\"}");
     AsyncJsonResponse *response = new AsyncJsonResponse();
     JsonObject root = response->getRoot();
-    //root["p1"] = p1;
-    //root["message"] = "Hello World";
     root["dischargeStatus"] = dischargeStatus;
     root["chargeStatus"] = chargeStatus;
     response->setLength();
