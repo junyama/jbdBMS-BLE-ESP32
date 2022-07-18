@@ -3,7 +3,18 @@
 
 #include "MyAdvertisedDeviceCallbacks.hpp"
 
+using namespace MyLOG;
+
 const String MyAdvertisedDeviceCallbacks::TAG = "MyAdvertisedDeviceCallbacks";
+
+MyAdvertisedDeviceCallbacks::MyAdvertisedDeviceCallbacks()
+{
+}
+
+MyAdvertisedDeviceCallbacks::MyAdvertisedDeviceCallbacks(BLEUUID serviceUUID_)
+    : serviceUUID(serviceUUID_), doConnect(false), doScan(false)
+{
+}
 
 void MyAdvertisedDeviceCallbacks::onResult(BLEAdvertisedDevice advertisedDevice)
 {
@@ -18,7 +29,6 @@ void MyAdvertisedDeviceCallbacks::onResult(BLEAdvertisedDevice advertisedDevice)
         myDevice = new BLEAdvertisedDevice(advertisedDevice);
         doConnect = true;
         doScan = true;
-
     } // Found our server
 }
 

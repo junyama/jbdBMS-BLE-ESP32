@@ -1,0 +1,1 @@
+{"sleepVoltageMv": 12999, "wakeUpVoltageMv": 13999, "wifi": [{"ssid": "SSID1", "pass": "pass1"}, {"ssid": "SSID2", "pass": "pass2"}], "ambient": {"channelId": 1234, "writeKey": "xxxxxxxx", "ambientSendIntervalBaseMs": 60000}}
