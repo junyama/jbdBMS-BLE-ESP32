@@ -16,8 +16,7 @@ using namespace MyLOG;
 //#include <LittleFS.h>
 
 #define LittleFS SPIFFS
-#define CONFIG_FILE "config_esp32dev.json"
-//#define CONFIG_FILE "config_wroover.json"
+#define CONFIG_FILE "config.json"
 
 #define WIFI_LED 32
 
