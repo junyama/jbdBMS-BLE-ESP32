@@ -16,6 +16,8 @@ using namespace MyLOG;
 //#include <LittleFS.h>
 
 #define LittleFS SPIFFS
+#define CONFIG_FILE "config_esp32dev.json"
+//#define CONFIG_FILE "config_wroover.json"
 
 #define WIFI_LED 32
 
@@ -30,16 +32,6 @@ const uint32_t connectTimeoutMs = 10000;
 
 // Web server
 AsyncWebServer server(80);
-
-// JbbBms
-// JbdBms myBms(&mySerial);
-// MyBLE myBLE;
-
-// some varialbles declaration and initalization
-// unsigned long SerialLastLoad = 0;
-// const int powerMeasurementInterval = 1 * 1000; // milli sec
-
-// packCellInfoStruct cellInfo;
 
 // int batteryTemp1, batteryTemp2, batteryChargePercentage, batteryCurrent, batteryVoltage, cellDiffVoltage, batteryCycleCount, mosFet, cellBalance;
 bool cellBalanceList[4];
@@ -111,6 +103,9 @@ void wifiConnect()
   {
     String logText = "WiFi connected: " + WiFi.SSID();
     logText += " " + String(WiFi.RSSI());
+    LOGD(TAG, logText);
+    logText = "IP: ";
+    logText += String(WiFi.localIP());
     LOGD(TAG, logText);
     Serial.print("IP: ");
     Serial.println(WiFi.localIP());
@@ -204,11 +199,13 @@ void setup()
   // loading configuration from a file
   // Allocate the JSON document
   StaticJsonDocument<512> configJson;
-  File fileHandle = LittleFS.open("/config.json", "r");
+  String fileName = "/";
+  fileName += CONFIG_FILE;
+  File fileHandle = LittleFS.open(fileName, "r");
   if (fileHandle)
   {
     String jsonStr = fileHandle.readStringUntil('\n');
-    LOGD(TAG, "config.json: " + jsonStr);
+    LOGD(TAG, fileName + ": " + jsonStr);
     fileHandle.close();
 
     // Deserialize the JSON document
@@ -240,6 +237,17 @@ void setup()
   // setup WiFi
   WiFi.mode(WIFI_STA);
   WiFi.hostname("JunBMS");
+
+  // static IP address setup
+  const IPAddress local_IP(192, 168, 0, 145);
+  const IPAddress gateway(192, 168, 0, 1);
+  const IPAddress DNS(192, 168, 0, 1);
+  const IPAddress subnet(255, 255, 255, 0);
+  if (!WiFi.config(local_IP, gateway, subnet, DNS))
+  {
+    LOGD(TAG, "Failed to configure!");
+  }
+
   // Add list of wifi networks
   for (int i = 0; i < configJson["wifi"].size(); i++)
   {
@@ -259,6 +267,9 @@ void setup()
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send(LittleFS, "/index.html"); });
 
+  server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(LittleFS, "/favicon.ico"); });
+
   server.on("/justgage/raphael.min.js", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send(LittleFS, "/raphael.min.js"); });
 
@@ -273,16 +284,6 @@ void setup()
 
   server.on("/disconnectBLE", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send_P(200, "text/plain", disconnectBLE().c_str()); });
-  /*
-  server.on("/disableCharge", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "text/plain", disableCharge().c_str()); });
-
-  server.on("/enableCharge", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "text/plain", enableCharge().c_str()); });
-
-  server.on("/mosfetCtrl", HTTP_POST, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "appicatlion/json", getValues().c_str()); });
-  */
 
   AsyncCallbackJsonWebHandler *handler = new AsyncCallbackJsonWebHandler("/mosfetCtrl", [](AsyncWebServerRequest *request, JsonVariant &json)
                                                                          {

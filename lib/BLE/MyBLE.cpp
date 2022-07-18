@@ -194,6 +194,39 @@ bool MyBLE::processDeviceInfo(char *output, byte *data, unsigned int dataLen)
     return true;
 }
 
+byte MyBLE::calcChecksum(byte *packet)
+{
+    /*
+    if (packet == nullptr)
+    {
+        return false;
+    }
+    */
+
+    bmsPacketHeaderStruct *pHeader = (bmsPacketHeaderStruct *)packet;
+    int checksumLen = pHeader->dataLen + 2; // status + data len + data
+
+    /*
+    if (pHeader->start != 0xDD)
+    {
+        return false;
+    }
+    */
+
+    int offset = 2; // header 0xDD and command type are skipped
+
+    byte checksum = 0;
+    for (int i = 0; i < checksumLen; i++)
+    {
+        checksum += packet[offset + i];
+    }
+
+    // printf("checksum: %x\n", checksum);
+
+    return checksum = ((checksum ^ 0xFF) + 1) & 0xFF;
+    // printf("checksum v2: %x\n", checksum);
+}
+
 bool MyBLE::isPacketValid(byte *packet) // check if packet is valid
 {
     // TRACE;
@@ -212,20 +245,25 @@ bool MyBLE::isPacketValid(byte *packet) // check if packet is valid
 
     int offset = 2; // header 0xDD and command type are skipped
 
+    /*
     byte checksum = 0;
     for (int i = 0; i < checksumLen; i++)
     {
         checksum += packet[offset + i];
     }
-
+    */
     // printf("checksum: %x\n", checksum);
 
-    checksum = ((checksum ^ 0xFF) + 1) & 0xFF;
+    //checksum = ((checksum ^ 0xFF) + 1) & 0xFF;
     // printf("checksum v2: %x\n", checksum);
 
     byte rxChecksum = packet[offset + checksumLen + 1];
+    //byte checksum = calcChecksum(packet);
 
-    if (checksum == rxChecksum)
+
+    //if (checksum == rxChecksum)
+    if (calcChecksum(packet) == rxChecksum)
+
     {
         // printf("Packet is valid\n");
         return true;
@@ -240,8 +278,8 @@ bool MyBLE::isPacketValid(byte *packet) // check if packet is valid
 
 bool MyBLE::bmsProcessPacket(byte *packet)
 {
-    const byte cBasicInfo3 = 3;   // type of packet 3= basic info
-    const byte cCellInfo4 = 4;    // type of packet 4= individual cell info
+    const byte cBasicInfo3 = 3;    // type of packet 3= basic info
+    const byte cCellInfo4 = 4;     // type of packet 4= individual cell info
     const byte cMOSFETCtrl = 0xE1; // type of packet E1= MOSFET Control
     // TRACE;
     bool isValid = isPacketValid(packet);
@@ -288,7 +326,9 @@ bool MyBLE::bmsProcessPacket(byte *packet)
     }
     default:
         result = false;
-        Serial.printf("Unsupported packet type detected. Type: %d", pHeader->type);
+        char buff[256];
+        sprintf(buff, "Unsupported packet type detected. Type: %d", pHeader->type);
+        LOGD(TAG, buff);
     }
     return result;
 }
@@ -365,55 +405,75 @@ void MyBLE::bmsGetInfo4()
 
 void MyBLE::bmsMosfetCtrl()
 {
-    LOGD(TAG, "bmsMosfetCtrl(" + String(commandParam) + ") sent");
+    LOGD(TAG, "bmsMosfetCtrl: " + String(commandParam));
+    byte mosfetParam = commandParam ^ 3;
+    uint8_t packet[9] = {0xdd, 0x5a, 0xe1, 0x02, 0x00, 0x00, 0xff, 0x00, 0x77};
+    packet[5] = mosfetParam;
+    packet[7] = calcChecksum(packet);
+    sendCommand(packet, sizeof(packet));
+
+    char buff[5];
+    String printStr = "";
+    for (byte i = 0; i < 9; i++) {
+        sprintf(buff, "0x%x ", packet[i]);
+        String str = buff;
+        printStr += str;
+    }
+    LOGD(TAG, printStr +" sent");
+    /*
     switch (commandParam)
     {
     case 0:
     {
         //   DD  5A E1 02  00  03 FF 1A  77
         uint8_t data[9] = {0xdd, 0x5a, 0xe1, 0x02, 0x00, 0x03, 0xff, 0x1a, 0x77};
+        Serial.printf("MyBLE::bmsMosfetCtrl(), mosfetParam: %x checksum: %x\n", mosfetParam, calcChecksum(data));
         // bmsSerial.write(data, 7);
-        //delay(500);
+        // delay(500);
         sendCommand(data, sizeof(data));
         // commSerial.println("Request info4 sent");
-        //packBasicInfo.MosfetStatus &= ~1;
-        LOGD(TAG, "Disable Charge and Dischage sent");
+        // packBasicInfo.MosfetStatus &= ~1;
+        LOGD(TAG, "charge = OFF, discharge = OFF");
         break;
     }
     case 1:
     {
         //   DD  5A E1 02  00  02 FF 1B  77
         uint8_t data[9] = {0xdd, 0x5a, 0xe1, 0x02, 0x00, 0x02, 0xff, 0x1b, 0x77};
-        //delay(500);
+        Serial.printf("MyBLE::bmsMosfetCtrl(), mosfetParam: %x checksum: %x\n", mosfetParam, calcChecksum(data));
+        // delay(500);
         sendCommand(data, sizeof(data));
         packBasicInfo.MosfetStatus &= ~1;
         // delay(500);
-        LOGD(TAG, "Disable Discharge sent");
+        LOGD(TAG, "charge = ON, discharge = OFF");
         break;
     }
     case 2:
     {
         // DD  5A E1 02  00  01 FF 1C  77
         uint8_t data[9] = {0xdd, 0x5a, 0xe1, 0x02, 0x00, 0x01, 0xff, 0x1c, 0x77};
+        Serial.printf("MyBLE::bmsMosfetCtrl(), mosfetParam: %x checksum: %x\n", mosfetParam, calcChecksum(data));
         // bmsSerial.write(data, 7);
         sendCommand(data, sizeof(data));
         // commSerial.println("Request info4 sent");
-        //packBasicInfo.MosfetStatus &= ~1;
+        // packBasicInfo.MosfetStatus &= ~1;
         // delay(500);
-        LOGD(TAG, "Enable Disharge sent");
+        LOGD(TAG, "charge = OFF, discharge = ON");
         break;
     }
     case 3:
     {
         //   DD  5A E1 02  00  00 FF 1D  77
         uint8_t data[9] = {0xdd, 0x5a, 0xe1, 0x02, 0x00, 0x00, 0xff, 0x1d, 0x77};
+        Serial.printf("MyBLE::bmsMosfetCtrl(), mosfetParam: %x checksum: %x\n", mosfetParam, calcChecksum(data));
         sendCommand(data, sizeof(data));
         packBasicInfo.MosfetStatus |= 1;
         // delay(500);
-        LOGD(TAG, "Enable Charge and Discharge sent");
+        LOGD(TAG, "charge = ON, discharge = ON");
         break;
     }
     }
+    */
 }
 
 void MyBLE::printBasicInfo() // debug all data to uart
@@ -521,7 +581,6 @@ bool MyBLE::connectToServer()
     if (pRemoteCharacteristic->canRead())
     {
         std::string value = pRemoteCharacteristic->readValue();
-        LOGD(TAG, "The characteristic value was: " + String(value.c_str()));
         commSerial.println(value.c_str());
     }
 

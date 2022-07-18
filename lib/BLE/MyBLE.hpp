@@ -70,6 +70,7 @@ private:
 	static bool processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned int dataLen);
 	static bool processCellInfo(packCellInfoStruct *output, byte *data, unsigned int dataLen);
 	static bool processDeviceInfo(char *output, byte *data, unsigned int dataLen);
+	static byte calcChecksum(byte *packet);
 	static bool isPacketValid(byte *packet); // check if packet is valid
 	static bool bmsProcessPacket(byte *packet);
 	static void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify);

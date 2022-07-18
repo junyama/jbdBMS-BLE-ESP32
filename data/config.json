@@ -1,1 +1,1 @@
-{"sleepVoltageMv": 12999, "wakeUpVoltageMv": 13999, "wifi": [{"ssid": "Jun-Home-AP", "pass": "takehiro"}, {"ssid": "Jun-FS020", "pass": "takehiro"}, {"ssid": "Jun-Moto-Z2-Play", "pass": "takehiro"}], "ambient": {"channelId": 8630, "writeKey": "b473180b50bf1709", "ambientSendIntervalBaseMs": 60000}}
+{"sleepVoltageMv": 12999, "wakeUpVoltageMv": 13999, "wifi": [{"ssid": "SSID1", "pass": "pass1"}, {"ssid": "SSID2", "pass": "pass2"}], "ambient": {"channelId": 1234, "writeKey": "xxxxxxxx", "ambientSendIntervalBaseMs": 60000}}
