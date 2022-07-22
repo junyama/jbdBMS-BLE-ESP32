@@ -181,30 +181,7 @@
                     break;
             }
         };
-        /*
-        var chargeStatusChanged = false;
-        function chargeSwitch(element) {
-            if (element.classList.contains('checked')) {
-                fetch('/disableCharge')
-                    .then(response => {
-                        element.classList.remove('checked');
-                    })
-                    .catch((error) => {
-                        console.error('Error:', error);
-                    });
-            }
-            else {
-                fetch('/enableCharge')
-                    .then(response => {
-                        element.classList.add('checked');
-                    })
-                    .catch((error) => {
-                        console.error('Error:', error);
-                    });
-            }
-            chargeStatusChanged = true;
-        };
-        */
+        
         function mosfetControl(element) {
             if (element.id == "chargeStatusId") bmsStatus.mosfetStatus.chargeStatus ^= 1;
             else bmsStatus.mosfetStatus.dischargeStatus ^= 1;
