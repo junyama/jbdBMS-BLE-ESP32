@@ -9,6 +9,8 @@
 #include <Ambient.h>
 #include "MyBLE.hpp"
 #include "MyDebug.hpp"
+#include "MySdCard.hpp"
+#include <HTTPClient.h>
 
 using namespace MyLOG;
 
@@ -21,6 +23,11 @@ using namespace MyLOG;
 #define WIFI_LED 32
 
 static const String TAG = "main";
+
+StaticJsonDocument<512> configJson;
+
+// SD Card
+MySdCard mySdCard;
 
 // Wi-Fi client
 WiFiClient client;
@@ -45,7 +52,7 @@ unsigned int ambientSendIntervalMs = ambientSendIntervalBaseMs;
 Ambient ambient;
 
 // sleep control
-float sleepVoltage = 13.399 * 1000; // mV
+float sleepVoltage = 13.399 * 1000;  // mV
 unsigned int sleepVoltageMv = 13199; // mV
 unsigned int wakeUpVoltageMv = 13399;
 
@@ -71,15 +78,15 @@ void setupDateTime()
 void wifiScann()
 {
   int n = WiFi.scanNetworks();
-  Serial.println("scan done");
+  LOGD(TAG, "scan done");
   if (n == 0)
   {
-    Serial.println("no networks found");
+    LOGD(TAG, "no networks found");
   }
   else
   {
     Serial.print(n);
-    Serial.println(" networks found");
+    LOGD(TAG, " networks found");
     for (int i = 0; i < n; ++i)
     {
       // Print SSID and RSSI for each network found
@@ -89,7 +96,7 @@ void wifiScann()
       Serial.print(" (");
       Serial.print(WiFi.RSSI(i));
       Serial.print(")");
-      Serial.println((WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? " " : "*");
+      LOGD(TAG, (WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? " " : "*");
       delay(10);
     }
   }
@@ -97,7 +104,7 @@ void wifiScann()
 
 void wifiConnect()
 {
-  Serial.println("Connecting Wifi...");
+  LOGD(TAG, "Connecting Wifi...");
   // if the connection to the stongest hotstop is lost, it will connect to the next network on the list
   if (wifiMulti.run(connectTimeoutMs) == WL_CONNECTED)
   {
@@ -108,12 +115,12 @@ void wifiConnect()
     logText += String(WiFi.localIP());
     LOGD(TAG, logText);
     Serial.print("IP: ");
-    Serial.println(WiFi.localIP());
+    Serial.print(WiFi.localIP());
     digitalWrite(WIFI_LED, HIGH);
   }
   else
   {
-    Serial.println("WiFi not connected!");
+    LOGD(TAG, "WiFi not connected!");
   }
 }
 
@@ -176,6 +183,74 @@ String disconnectBLE()
   return "OK";
 }
 
+void updatePOI()
+{
+  if (!SD.begin(5))
+  {
+    LOGD(TAG, "SD Card Mount Failed");
+    SD.end();
+    return;
+  }
+  const size_t CAPACITY = JSON_ARRAY_SIZE(500);
+  DynamicJsonDocument poiIndexJson(CAPACITY);
+  HTTPClient http;
+  const char *poiURL_ = configJson["poiURL"];
+  String poiURL = poiURL_;
+  http.begin(poiURL + "poi/index.json");
+  int httpResponseCode = http.GET();
+  if (httpResponseCode == 200)
+  {
+    char buff[128];
+    sprintf(buff, "HTTP Response code: %d", httpResponseCode);
+    LOGD(TAG, buff);
+    String payload = http.getString();
+    Serial.println(payload);
+    MySdCard::writeFile(SPIFFS, "/poi/index.json", payload.c_str());
+    DeserializationError error = deserializeJson(poiIndexJson, payload);
+    if (error)
+    {
+      LOGD(TAG, "deserializeJson() failed");
+      LOGD(TAG, "error description: " + String(error.f_str()));
+      SD.end();
+      return;
+    }
+    else
+    {
+      MySdCard::listDir(SD, "/PersonalPOI", 0);
+      MySdCard::removeDirR(SD, "/PersonalPOI");
+      MySdCard::createDir(SD, "/PersonalPOI");
+      JsonArray poiIndexArray = poiIndexJson.as<JsonArray>();
+      for (JsonVariant v : poiIndexArray)
+      {
+        String POIFileName = v.as<String>();
+        LOGD(TAG, "POI file name: " + POIFileName);
+        http.begin(poiURL + "poi/" + POIFileName);
+        httpResponseCode = http.GET();
+        if (httpResponseCode == 200)
+        {
+          payload = http.getString();
+          Serial.println(payload);
+          // writeFile("/poi/" + POIFileName, payload);
+          String path = "/PersonalPOI/" + POIFileName;
+          MySdCard::writeFile(SD, path.c_str(), payload.c_str());
+        }
+        else
+        {
+          LOGD(TAG, "GET " + POIFileName + " failed, HTTP Response code: " + String(httpResponseCode));
+        }
+      }
+    }
+  }
+  else
+  {
+    LOGD(TAG, "GET index.json failed, HTTP Response code: " + String(httpResponseCode));
+  }
+  // Free resources
+  http.end();
+  SD.end();
+  return;
+}
+
 void setup()
 {
   Serial.begin(115200); // Standard hardware serial port
@@ -198,7 +273,7 @@ void setup()
 
   // loading configuration from a file
   // Allocate the JSON document
-  StaticJsonDocument<512> configJson;
+  // StaticJsonDocument<512> configJson;
   String fileName = "/";
   fileName += CONFIG_FILE;
   File fileHandle = LittleFS.open(fileName, "r");
@@ -215,7 +290,7 @@ void setup()
     if (error)
     {
       Serial.print(F("deserializeJson() failed: "));
-      Serial.println(error.f_str());
+      LOGD(TAG, error.f_str());
     }
     else
     {
@@ -263,6 +338,9 @@ void setup()
   LOGD(TAG, "Going to setup date");
   setupDateTime();
 
+  // update POI in SD card
+  updatePOI();
+
   // setup webAPIs
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send(LittleFS, "/index.html"); });
@@ -278,6 +356,9 @@ void setup()
 
   server.on("/log.txt", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send(LittleFS, "/log.txt"); });
+
+  server.on("/poi/index.json", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(LittleFS, "/poi/index.json"); });
 
   server.on("/getValues", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send_P(200, "appicatlion/json", getValues().c_str()); });
@@ -317,6 +398,26 @@ void setup()
 
   // initalize pack volt not to disconnect WiFi
   MyBLE::packBasicInfo.Volts = 15000;
+
+  /* setup sd card
+  LOGD(TAG, "goin to setup SD card");
+  if (!SD.begin(5))
+  {
+    LOGD(TAG, "SD Card Mount Failed");
+    updatePOI(); // for test to be removed
+  }
+  else
+  {
+    // uint8_t cardType = SD.cardType();
+    uint64_t cardSize = SD.cardSize() / (1024 * 1024);
+    char buff[128];
+    sprintf(buff, "SD Card Size: %lluMB", cardSize);
+    LOGD(TAG, buff);
+    updatePOI();
+    LOGD(TAG, "exiting porgram......");
+    exit(1);
+  }
+  */
 }
 
 void loop()
