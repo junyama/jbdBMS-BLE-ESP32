@@ -127,7 +127,7 @@ void MySdCard::readFile(fs::FS &fs, const char *path)
 
 void MySdCard::writeFile(fs::FS &fs, const char *path, const char *message)
 {
-    LOGD(TAG, "Writing file: %s\n", path);
+    LOGD(TAG, "Writing file: " + String(path));
 
     File file = fs.open(path, FILE_WRITE);
     if (!file)

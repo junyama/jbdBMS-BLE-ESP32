@@ -188,7 +188,7 @@ void updatePOI()
   if (!SD.begin(5))
   {
     LOGD(TAG, "SD Card Mount Failed");
-    SD.end();
+    //SD.end();
     return;
   }
   const size_t CAPACITY = JSON_ARRAY_SIZE(500);
@@ -339,7 +339,7 @@ void setup()
   setupDateTime();
 
   // update POI in SD card
-  updatePOI();
+  //updatePOI();
 
   // setup webAPIs
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
