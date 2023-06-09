@@ -1,0 +1,1 @@
+{"sleepVoltageMv": 13299, "wakeUpVoltageMv": 13699, "wifi": [{"ssid": "Jun-FS020W", "pass": "takehiro"}, {"ssid": "Jun-Home-AP", "pass": "takehiro"}, {"ssid": "Jun-Moto-Z2-Play", "pass": "takehiro"}], "ambient": {"channelId": 50366, "writeKey": "ccb476294fe16acd", "ambientSendIntervalBaseMs": 60000}, "poiURL": "http://junichi2.ddns.net/"}

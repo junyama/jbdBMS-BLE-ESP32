@@ -14,11 +14,11 @@
 
 using namespace MyLOG;
 
-//#include <JbdBms.h>
-//#include <LittleFS.h>
+// #include <JbdBms.h>
+// #include <LittleFS.h>
 
 #define LittleFS SPIFFS
-#define CONFIG_FILE "config_wroover.json"
+#define CONFIG_FILE "config.json"
 
 #define WIFI_LED 32
 
@@ -27,14 +27,14 @@ static const String TAG = "main";
 StaticJsonDocument<512> configJson;
 
 // SD Card
-MySdCard mySdCard;
+// MySdCard mySdCard;
 
 // Wi-Fi client
 WiFiClient client;
 
 // WiFiMulti
 WiFiMulti wifiMulti;
-const uint32_t connectTimeoutMs = 10000;
+const uint32_t connectTimeoutMs = 20000;
 
 // Web server
 AsyncWebServer server(80);
@@ -102,7 +102,7 @@ void wifiScann()
   }
 }
 
-void wifiConnect()
+int wifiConnect()
 {
   LOGD(TAG, "Connecting Wifi...");
   // if the connection to the stongest hotstop is lost, it will connect to the next network on the list
@@ -115,12 +115,14 @@ void wifiConnect()
     logText += String(WiFi.localIP());
     LOGD(TAG, logText);
     Serial.print("IP: ");
-    Serial.print(WiFi.localIP());
+    Serial.println(WiFi.localIP());
     digitalWrite(WIFI_LED, HIGH);
+    return 0;
   }
   else
   {
     LOGD(TAG, "WiFi not connected!");
+    return -1;
   }
 }
 
@@ -188,7 +190,7 @@ void updatePOI()
   if (!SD.begin(5))
   {
     LOGD(TAG, "SD Card Mount Failed");
-    //SD.end();
+    // SD.end();
     return;
   }
   const size_t CAPACITY = JSON_ARRAY_SIZE(500);
@@ -203,10 +205,10 @@ void updatePOI()
     char buff[128];
     sprintf(buff, "HTTP Response code: %d", httpResponseCode);
     LOGD(TAG, buff);
-    String payload = http.getString();
-    Serial.println(payload);
-    MySdCard::writeFile(SPIFFS, "/poi/index.json", payload.c_str());
-    DeserializationError error = deserializeJson(poiIndexJson, payload);
+    String indexJsonStr = http.getString();
+    Serial.println(indexJsonStr);
+    MySdCard::writeFile(SPIFFS, "/poi/index.json", indexJsonStr.c_str());
+    DeserializationError error = deserializeJson(poiIndexJson, indexJsonStr);
     if (error)
     {
       LOGD(TAG, "deserializeJson() failed");
@@ -219,6 +221,7 @@ void updatePOI()
       MySdCard::listDir(SD, "/PersonalPOI", 0);
       MySdCard::removeDirR(SD, "/PersonalPOI");
       MySdCard::createDir(SD, "/PersonalPOI");
+      MySdCard::writeFile(SD, "/PersonalPOI/index.json", indexJsonStr.c_str());
       JsonArray poiIndexArray = poiIndexJson.as<JsonArray>();
       for (JsonVariant v : poiIndexArray)
       {
@@ -228,11 +231,11 @@ void updatePOI()
         httpResponseCode = http.GET();
         if (httpResponseCode == 200)
         {
-          payload = http.getString();
-          Serial.println(payload);
-          // writeFile("/poi/" + POIFileName, payload);
+          String gpxStr = http.getString();
+          Serial.println(gpxStr);
+          // writeFile("/poi/" + POIFileName, gpxStr);
           String path = "/PersonalPOI/" + POIFileName;
-          MySdCard::writeFile(SD, path.c_str(), payload.c_str());
+          MySdCard::writeFile(SD, path.c_str(), gpxStr.c_str());
         }
         else
         {
@@ -331,7 +334,25 @@ void setup()
   LOGD(TAG, "going to scann WiFi");
   wifiScann();
   LOGD(TAG, "going to connect WiFi");
-  wifiConnect();
+  if (wifiConnect() != 0)
+  {
+    LOGD(TAG, "failed to connect WiFi and exiting");
+    exit(-1);
+  }
+  //
+
+ /*
+  const char *ssid = "Jun-Home-AP";
+  const char *password = "takehiro";
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+  */
+
   LOGD(TAG, "WiFi setup done");
 
   // setup DateTime
@@ -339,7 +360,7 @@ void setup()
   setupDateTime();
 
   // update POI in SD card
-  //updatePOI();
+  updatePOI();
 
   // setup webAPIs
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -398,26 +419,7 @@ void setup()
 
   // initalize pack volt not to disconnect WiFi
   MyBLE::packBasicInfo.Volts = 15000;
-
-  /* setup sd card
-  LOGD(TAG, "goin to setup SD card");
-  if (!SD.begin(5))
-  {
-    LOGD(TAG, "SD Card Mount Failed");
-    updatePOI(); // for test to be removed
-  }
-  else
-  {
-    // uint8_t cardType = SD.cardType();
-    uint64_t cardSize = SD.cardSize() / (1024 * 1024);
-    char buff[128];
-    sprintf(buff, "SD Card Size: %lluMB", cardSize);
-    LOGD(TAG, buff);
-    updatePOI();
-    LOGD(TAG, "exiting porgram......");
-    exit(1);
-  }
-  */
+  ambientlLastSent = millis();
 }
 
 void loop()
@@ -428,8 +430,9 @@ void loop()
     LOGD(TAG, "newPacketReceived == true");
     DISABLE_LOGD = true;
     MyBLE::printBasicInfo();
-    DISABLE_LOGD = true;
+    DISABLE_LOGD = false;
     LOGD(TAG, "Pack Voltage: " + String(MyBLE::packBasicInfo.Volts));
+    DISABLE_LOGD = true;
     LOGD(TAG, "BalanceCodeLow: " + String(MyBLE::packBasicInfo.BalanceCodeLow));
     LOGD(TAG, "MosfetStatus: " + String(MyBLE::packBasicInfo.MosfetStatus));
     LOGD(TAG, "CellAvg: " + String(MyBLE::packCellInfo.CellAvg));
