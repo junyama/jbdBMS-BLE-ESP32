@@ -117,6 +117,7 @@ int wifiConnect()
     Serial.print("IP: ");
     Serial.println(WiFi.localIP());
     digitalWrite(WIFI_LED, HIGH);
+    LOGD(TAG, "WIFI_LED ON");
     return 0;
   }
   else
@@ -193,7 +194,7 @@ void updatePOI()
     // SD.end();
     return;
   }
-  const size_t CAPACITY = JSON_ARRAY_SIZE(500);
+  const size_t CAPACITY = JSON_ARRAY_SIZE(400);
   DynamicJsonDocument poiIndexJson(CAPACITY);
   HTTPClient http;
   const char *poiURL_ = configJson["poiURL"];

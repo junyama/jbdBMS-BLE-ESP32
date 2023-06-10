@@ -13,11 +13,11 @@
         }
 
         .topBar {
-            font-size: 60px;
+            font-size: 80px;
             font-family: sans-serif;
             font-weight: bold;
             text-align: center;
-            padding: 5px 0 5px 0;
+            padding: 30px 0 20px 0;
         }
 
         .clear:before,
@@ -40,7 +40,7 @@
             font-size: 50px;
             font-weight: bold;
             text-align: center;
-            padding: 10px 0 5px 0;
+            padding: 20px 0 20px 0;
         }
 
         .title-2 {
@@ -57,17 +57,13 @@
             font-size: 30px;
             font-weight: bold;
             text-align: center;
-            /*padding: 20px 0 5px 0;*/
         }
 
 
         .gauge {
             display: block;
             float: left;
-            /* border: 1px solid #ddd; */
             box-sizing: border-box;
-            /*margin: 0 0 1% 0;*/
-            /*padding: 20px 0 15px 0;*/
         }
 
         .size-1 {
@@ -93,6 +89,7 @@
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
+            margin: 30px 0 0 0;
         }
 
         th,
@@ -102,7 +99,6 @@
         }
 
         .toggle {
-            /*float: left;*/
             position: relative;
             width: 80%;
             height: 48px;
@@ -136,7 +132,6 @@
             content: "";
             position: absolute;
             top: 3px;
-            /* left: 84%; */
             right: 2%;
             width: 42px;
             height: 42px;
@@ -153,15 +148,10 @@
         }
 
         .toggle.checked:after {
-            /*left: 33px;*/
             left: 2%;
             box-shadow: 0 9px 28px -6px rgba(0, 0, 0, 0.5);
         }
     </style>
-    <!--
-    <script src="/raphael.min.js"></script>
-    <script src="/justgage.js"></script>
-    -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/raphael/2.1.4/raphael-min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/justgage/1.5.1/justgage.min.js"></script>
@@ -181,7 +171,7 @@
                     break;
             }
         };
-        
+
         function mosfetControl(element) {
             if (element.id == "chargeStatusId") bmsStatus.mosfetStatus.chargeStatus ^= 1;
             else bmsStatus.mosfetStatus.dischargeStatus ^= 1;
@@ -198,24 +188,16 @@
                     alert(data.response);
                 }
             });
-            /*
-            fetch('/mosfetCtrl', { method: 'POST', headers: { 'Conten-Type': 'application/json' }, body: JSON.stringify(bmsStatus.mosfetStatus) })
+
+        };
+        function disconnectBLE(element) {
+            fetch('/disconnectBLE')
                 .then(response => {
-                    console.log('mosfetControl');
+                    console.log('disconnectBLE');
                 })
                 .catch((error) => {
                     console.error('Error:', error);
                 });
-                */
-        };
-        function disconnectBLE(element) {
-            fetch('/disconnectBLE')
-                    .then(response => {
-                        console.log('disconnectBLE');
-                    })
-                    .catch((error) => {
-                        console.error('Error:', error);
-                    });
         }
     </script>
 </head>
@@ -341,13 +323,7 @@
             var cell1Voltage, cell2Voltage, cell3Voltage, cell4Voltage, totalVoltage, current, chagePercentage, temperature1, temperature2;
 
             var defs1 = {
-                //label: "label",
-                //value: 3.5,
-                //min: 0,
-                //max: 4,
-                //decimals: 3,
                 gaugeWidthScale: 0.6,
-                //hideMinMax: true,
                 minLabelMinFontSize: 18,
                 maxLabelMinFontSize: 18,
                 pointer: true,
@@ -362,11 +338,6 @@
             }
 
             var defs2 = {
-                //label: "label",
-                //value: 35,
-                //min: 0,
-                //max: 100,
-                //decimals: 0,
                 gaugeWidthScale: 0.6,
                 pointer: true,
                 pointerOptions: {
@@ -382,21 +353,16 @@
             current = new JustGage({
                 id: "currentID",
                 defaults: defs1,
-                //label: "Current",
-                //min: -40,
                 max: 40,
                 decimals: 2,
-                //labelMinFontSize: 15,
                 symbol: "A"
             });
 
             chagePercentage = new JustGage({
                 id: "chagePercentageID",
                 defaults: defs1,
-                //label: "Charge",
                 max: 100,
                 decimals: 0,
-                //labelMinFontSize: 15,
                 symbol: "%"
 
             });
@@ -404,67 +370,54 @@
             cell1Voltage = new JustGage({
                 id: "cell1VoltageID",
                 defaults: defs1,
-                //label: "Cell-1",
                 max: 4,
                 value: 3.5,
                 decimals: 3,
-                //labelMinFontSize: 18,
                 symbol: "V"
             });
 
             cell2Voltage = new JustGage({
                 id: "cell2VoltageID",
                 defaults: defs1,
-                //label: "Cell-2",
                 max: 4,
                 value: 3.5,
                 decimals: 3,
-                //labelMinFontSize: 18,
                 symbol: "V"
             });
 
             cell3Voltage = new JustGage({
                 id: "cell3VoltageID",
                 defaults: defs1,
-                //label: "Cell-3",
                 max: 4,
                 value: 3.5,
                 decimals: 3,
-                //labelMinFontSize: 18,
                 symbol: "V"
             });
 
             cell4Voltage = new JustGage({
                 id: "cell4VoltageID",
                 defaults: defs1,
-                //label: "Cell-4",
                 max: 4,
                 value: 3.5,
                 decimals: 3,
-                //labelMinFontSize: 18,
                 symbol: "V"
             });
 
             totalVoltage = new JustGage({
                 id: "totalVoltageID",
                 defaults: defs1,
-                //label: "Total Voltage",
                 max: 16,
                 min: 10,
                 value: 12,
                 decimals: 2,
-                //labelMinFontSize: 18,
-
                 symbol: "V"
             });
 
             voltageDiff = new JustGage({
                 id: "voltageDiffID",
                 defaults: defs1,
-                //label: "Voltage Diff",
                 max: 0.5,
                 decimals: 3,
-                //labelMinFontSize: 18,
                 symbol: "V"
 
             });
@@ -472,20 +425,16 @@
             temperature1 = new JustGage({
                 id: "temperature1ID",
                 defaults: defs1,
-                //label: "Temperature",
                 max: 50,
                 decimals: 1,
-                //labelMinFontSize: 18,
                 symbol: "C"
             });
 
             temperature2 = new JustGage({
                 id: "temperature2ID",
                 defaults: defs1,
-                //label: "Temperature",
                 max: 50,
                 decimals: 1,
-                //labelMinFontSize: 18,
                 symbol: "C"
             });
 
