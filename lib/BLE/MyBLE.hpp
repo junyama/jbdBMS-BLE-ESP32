@@ -50,10 +50,12 @@ private:
 	static const long interval;
 	static unsigned long previousMillis;
 	static bool toggle;
+	static bool toggle2;
 
 	static BLEClient *pClient;
 	static void bmsGetInfo3();
 	static void bmsGetInfo4();
+	static void bmsGetInfo5();
 
 	static bool connectToServer();
 	static void sendCommand(uint8_t *data, uint32_t dataLen);
@@ -69,7 +71,7 @@ private:
 	static int16_t two_ints_into16(int highbyte, int lowbyte); // turns two bytes into a single long integer
 	static bool processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned int dataLen);
 	static bool processCellInfo(packCellInfoStruct *output, byte *data, unsigned int dataLen);
-	static bool processDeviceInfo(char *output, byte *data, unsigned int dataLen);
+	static bool processDeviceInfo(byte *data, unsigned int dataLen);
 	static byte calcChecksum(byte *packet);
 	static bool isPacketValid(byte *packet); // check if packet is valid
 	static bool bmsProcessPacket(byte *packet);
@@ -96,7 +98,9 @@ public:
 
 	static packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
 	static packCellInfoStruct packCellInfo;	  // here shall be the latest data got from BMS
-	static char *deviceName;
+	//static char *deviceName;
+	static String deviceNameStr;
+	static int numberOfTemperature;
 
 	// MyBLE();
 	static void printBasicInfo(); // debug all data to uart

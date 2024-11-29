@@ -14,5 +14,16 @@ void MyLOG::LOGD(String tag, String text)
         Serial.println(text);
     }
 }
+void MyLOG::LOGLCD(String tag, String text)
+{
+    if (!DISABLE_LOGD)
+    {
+        M5.Lcd.wakeup();
+        M5.Axp.SetLcdVoltage(3000);
+        M5.Lcd.print("[" + DateTime.toString() + "] ");
+        M5.Lcd.print(tag + ": ");
+        M5.Lcd.println(text);
+    }
+}
 
 #endif /* MY_DEBUG_CPP */

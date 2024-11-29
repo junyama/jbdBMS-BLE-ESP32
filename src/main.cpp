@@ -1,3 +1,20 @@
+/*
+*******************************************************************************
+* Copyright (c) 2021 by M5Stack
+*                  Equipped with M5Core2 sample source code
+* Visit for more information: https://docs.m5stack.com/en/core/core2
+*
+* Describe: WIFI Multi.
+* Date: 2021/7/29
+*******************************************************************************
+*  Connect to the best AP based on a given wifi list
+*/
+
+#include <M5Core2.h>
+
+#include <WiFi.h>
+#include <WiFiMulti.h>
+
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiMulti.h>
@@ -7,10 +24,11 @@
 #include <ArduinoJson.h>
 #include <ESPDateTime.h>
 #include <Ambient.h>
+#include <HTTPClient.h>
+
 #include "MyBLE.hpp"
 #include "MyDebug.hpp"
 #include "MySdCard.hpp"
-#include <HTTPClient.h>
 
 using namespace MyLOG;
 
@@ -20,14 +38,16 @@ using namespace MyLOG;
 #define LittleFS SPIFFS
 #define CONFIG_FILE "config.json"
 
-#define WIFI_LED 32
+// #define WIFI_LED 32
+// #define BLE_LED 33 // this constant is not used bu main but used by MyCallback
+
+#define uS_TO_S_FACTOR 1000000 /* Conversion factor for micro seconds to seconds */
+// #define TIME_TO_SLEEP 900      /* Time ESP32 will go to sleep (in seconds) */
 
 static const String TAG = "main";
 
-StaticJsonDocument<512> configJson;
-
-// SD Card
-// MySdCard mySdCard;
+// StaticJsonDocument<1024> configJson;
+JsonDocument configJson;
 
 // Wi-Fi client
 WiFiClient client;
@@ -52,9 +72,12 @@ unsigned int ambientSendIntervalMs = ambientSendIntervalBaseMs;
 Ambient ambient;
 
 // sleep control
+// unsigned int numberOfTemperature = 2; // numbe of temperature sensor
 float sleepVoltage = 13.399 * 1000;  // mV
 unsigned int sleepVoltageMv = 13199; // mV
 unsigned int wakeUpVoltageMv = 13399;
+unsigned int deepSleepVoltageMv = 13199; // mV
+unsigned int deepSleepTimeSec = 900;     // seconds
 
 // local functions definitions
 
@@ -105,19 +128,30 @@ void wifiScann()
 int wifiConnect()
 {
   LOGD(TAG, "Connecting Wifi...");
+  M5.lcd.print("Connecting Wifi..."); // Serial port format output string.
+
   // if the connection to the stongest hotstop is lost, it will connect to the next network on the list
   if (wifiMulti.run(connectTimeoutMs) == WL_CONNECTED)
   {
-    String logText = "WiFi connected: " + WiFi.SSID();
-    logText += " " + String(WiFi.RSSI());
+    String logText = "WiFi connected to " + WiFi.SSID();
+    logText += "(" + String(WiFi.RSSI()) + ")";
     LOGD(TAG, logText);
-    logText = "IP: ";
-    logText += String(WiFi.localIP());
-    LOGD(TAG, logText);
+    // logText = "IP: ";
+    // logText += String(WiFi.localIP());
+    // LOGD(TAG, logText);
     Serial.print("IP: ");
     Serial.println(WiFi.localIP());
-    digitalWrite(WIFI_LED, HIGH);
-    LOGD(TAG, "WIFI_LED ON");
+    // digitalWrite(WIFI_LED, HIGH);
+    // LOGD(TAG, "WIFI_LED ON");
+
+    M5.lcd.setCursor(0, 20);
+    M5.lcd.print("WiFi connected\n\nSSID:");
+    M5.lcd.println(WiFi.SSID()); // Output Network name.
+    M5.lcd.print("RSSI: ");
+    M5.lcd.println(WiFi.RSSI()); // Output signal strength.
+    M5.lcd.print("IP address: ");
+    M5.lcd.println(WiFi.localIP()); // Output IP Address.
+
     return 0;
   }
   else
@@ -134,7 +168,10 @@ String getValues()
   jsonStr += "{\"batteryTemp1\": ";
   jsonStr += String(MyBLE::packBasicInfo.Temp1);
   jsonStr += ", \"batteryTemp2\": ";
+  // if (numberOfTemperature == 2)
   jsonStr += String(MyBLE::packBasicInfo.Temp2);
+  // else
+  // jsonStr += String(MyBLE::packBasicInfo.Temp1);
   jsonStr += ", \"batteryChargePercentage\": ";
   jsonStr += String(MyBLE::packBasicInfo.CapacityRemainPercent);
   jsonStr += ", \"batteryCurrent\": ";
@@ -147,7 +184,8 @@ String getValues()
   chargeStatus = MyBLE::packBasicInfo.MosfetStatus & 1;
   jsonStr += String(chargeStatus);
   jsonStr += ", \"dischargeStatus\": ";
-  dischargeStatus = MyBLE::packBasicInfo.MosfetStatus & 1 << 1;
+  // dischargeStatus = MyBLE::packBasicInfo.MosfetStatus & 1 << 1;
+  dischargeStatus = (MyBLE::packBasicInfo.MosfetStatus & 2) >> 1;
   jsonStr += String(dischargeStatus);
   jsonStr += "}, \"batteryList\": [";
   jsonStr += String(MyBLE::packCellInfo.CellVolt[0]);
@@ -186,6 +224,106 @@ String disconnectBLE()
   return "OK";
 }
 
+String requestDeviceName()
+{
+  MyBLE::ctrlCommand = 3;
+  return "OK";
+}
+
+String getDeviceName()
+{
+  return MyBLE::deviceNameStr;
+}
+
+String reset()
+{
+  LOGD(TAG, "going to reset in 5 sec");
+  delay(5000);
+  ESP.restart();
+  return "OK";
+}
+
+void loadConfig()
+{
+  if (!SD.begin(5))
+  {
+    LOGD(TAG, "SD Card Mount Failed");
+    // SD.end();
+    return;
+  }
+  LOGD(TAG, "SD Card initalized");
+  String fileName = "/";
+  fileName += CONFIG_FILE;
+  // MySdCard::readFile(SD, fileName);
+  LOGD(TAG, "opeing file from SD Card");
+  File myFile = SD.open(fileName, FILE_READ); // Open the file "/config.json" in read mode.
+  if (myFile)
+  {
+    // Read the data from the file and print it until the reading is complate.
+    String jsontext;
+    // jsontext = "{\"numberOfTemperature\": 1, \"sleepVoltageMv\": 12999, \"wakeUpVoltageMv\": 13899, \"deepSleepVoltageMv\": 11699, \"deepSleepTimeSec\": 900, \"wifi\": [{\"ssid\": \"Jun-Home-AP\", \"pass\": \"takehiro\"}, {\"ssid\": \"Jun-FS020W\", \"pass\": \"takehiro\"}], \"poiURL\": \"http://junichi2.ddns.net/\", \"ambient\": {\"channelId\": 50366, \"writeKey\": \"ccb476294fe16acd\", \"ambientSendIntervalBaseMs\": 60000}}";
+    /*
+    while (myFile.available())
+    {
+      M5.Lcd.write(myFile.read());
+    }
+    */
+    while (myFile.available())
+    {
+      jsontext = jsontext + myFile.readString();
+    }
+    LOGD(TAG, "jsontext: " + jsontext);
+    DeserializationError error = deserializeJson(configJson, jsontext.c_str());
+    if (error)
+    {
+      LOGD(TAG, "Deserialization error.");
+    }
+    else
+    {
+      /*
+      int sleepVoltageMv = configJson["sleepVoltageMv"];
+      String writeKey = configJson["ambient"]["writeKey"];
+      LOGD(TAG, "sleepVoltageMv: " + String(sleepVoltageMv));
+      LOGD(TAG, "writeKey: " + writeKey);
+      */
+
+      int numberOfTemperature = configJson["numberOfTemperature"];
+      if (numberOfTemperature)
+        MyBLE::numberOfTemperature = numberOfTemperature;
+      int channelId_ = configJson["ambient"]["channelId"];
+      if (channelId_)
+        channelId = channelId_;
+      const char *writeKey_ = configJson["ambient"]["writeKey"];
+      if (writeKey_)
+      {
+        writeKey = writeKey_;
+        LOGD(TAG, "writeKey: " + writeKey);
+      }
+      int sleepVoltageMv_ = configJson["sleepVoltageMv"];
+      if (sleepVoltageMv_)
+      {
+        sleepVoltageMv = sleepVoltageMv_;
+        LOGD(TAG, "sleepVoltageMv: " + String(sleepVoltageMv));
+      }
+      int wakeUpVoltageMv_ = configJson["wakeUpVoltageMv"];
+      if (wakeUpVoltageMv_)
+        wakeUpVoltageMv = wakeUpVoltageMv_;
+      int deepSleepVoltageMv_ = configJson["deepSleepVoltageMv"];
+      if (deepSleepVoltageMv_)
+        deepSleepVoltageMv = deepSleepVoltageMv_;
+      int deepSleepTimeSec_ = configJson["deepSleepTimeSec"];
+      if (deepSleepTimeSec_)
+        deepSleepTimeSec = deepSleepTimeSec_;
+    }
+
+    myFile.close();
+  }
+  else
+  {
+    LOGD(TAG, "error opening /config.json"); // If the file is not open.
+  }
+}
+
 void updatePOI()
 {
   if (!SD.begin(5))
@@ -194,8 +332,9 @@ void updatePOI()
     // SD.end();
     return;
   }
-  const size_t CAPACITY = JSON_ARRAY_SIZE(400);
-  DynamicJsonDocument poiIndexJson(CAPACITY);
+  // const size_t CAPACITY = JSON_ARRAY_SIZE(500);
+  // DynamicJsonDocument poiIndexJson(CAPACITY);
+  JsonDocument poiIndexJson;
   HTTPClient http;
   const char *poiURL_ = configJson["poiURL"];
   String poiURL = poiURL_;
@@ -255,13 +394,43 @@ void updatePOI()
   return;
 }
 
+/*
+WiFiMulti wifiMulti;
+*/
+
+void sleep(int sec)
+{
+  M5.Axp.SetLed(0);
+  M5.Axp.SetLcdVoltage(0);
+  M5.Axp.DeepSleep(SLEEP_SEC(sec));
+}
+
+void myDeepSleep(int sec)
+{
+  M5.Axp.SetLed(0);
+  M5.Axp.SetLcdVoltage(0);
+  M5.Axp.DeepSleep(SLEEP_SEC(sec));
+}
+
+void lcdControl(int mode)
+{
+  switch (mode)
+  {
+  case 0:
+    M5.Lcd.sleep();
+    M5.Axp.SetLcdVoltage(0);
+    break;
+  default:
+    M5.Lcd.wakeup();
+    M5.Axp.SetLcdVoltage(3000);
+  }
+}
+
 void setup()
 {
-  Serial.begin(115200); // Standard hardware serial port
-
-  // LED setup
-  pinMode(WIFI_LED, OUTPUT);
-  digitalWrite(WIFI_LED, LOW);
+  M5.begin(); // Init M5Core2.
+  M5.Lcd.setTextFont(2);
+  Serial.begin(9600); // Standard hardware serial port
 
   // LITTLEFS
   LOGD(TAG, "mounting SPIFFS");
@@ -274,7 +443,7 @@ void setup()
   {
     LOGD(TAG, "SPIFFS mount done");
   }
-
+  /*
   // loading configuration from a file
   // Allocate the JSON document
   // StaticJsonDocument<512> configJson;
@@ -298,6 +467,9 @@ void setup()
     }
     else
     {
+      int numberOfTemperature = configJson["numberOfTemperature"];
+      if (numberOfTemperature)
+        MyBLE::numberOfTemperature = numberOfTemperature;
       int channelId_ = configJson["ambient"]["channelId"];
       if (channelId_)
         channelId = channelId_;
@@ -310,15 +482,25 @@ void setup()
       int wakeUpVoltageMv_ = configJson["wakeUpVoltageMv"];
       if (wakeUpVoltageMv_)
         wakeUpVoltageMv = wakeUpVoltageMv_;
+      int deepSleepVoltageMv_ = configJson["deepSleepVoltageMv"];
+      if (deepSleepVoltageMv_)
+        deepSleepVoltageMv = deepSleepVoltageMv_;
+      int deepSleepTimeSec_ = configJson["deepSleepTimeSec"];
+      if (deepSleepTimeSec_)
+        deepSleepTimeSec = deepSleepTimeSec_;
     }
   }
+  */
+
+  // load config.json from SD
+  loadConfig();
 
   // setup WiFi
   WiFi.mode(WIFI_STA);
   WiFi.hostname("JunBMS");
 
   // static IP address setup
-  const IPAddress local_IP(192, 168, 0, 145);
+  const IPAddress local_IP(192, 168, 0, 45);
   const IPAddress gateway(192, 168, 0, 1);
   const IPAddress DNS(192, 168, 0, 1);
   const IPAddress subnet(255, 255, 255, 0);
@@ -332,28 +514,20 @@ void setup()
   {
     wifiMulti.addAP(configJson["wifi"][i]["ssid"], configJson["wifi"][i]["pass"]);
   }
+  //
+
+  // wifiMulti.addAP("Jun-Home-AP", "takehiro"); // Storage wifi configuration information 1.
+  // wifiMulti.addAP("Jun-FS020W", "takehiro");
+
   LOGD(TAG, "going to scann WiFi");
   wifiScann();
+
   LOGD(TAG, "going to connect WiFi");
   if (wifiConnect() != 0)
   {
     LOGD(TAG, "failed to connect WiFi and exiting");
     exit(-1);
   }
-  //
-
- /*
-  const char *ssid = "Jun-Home-AP";
-  const char *password = "takehiro";
-  WiFi.begin(ssid, password);
-
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
-    Serial.print(".");
-  }
-  */
-
   LOGD(TAG, "WiFi setup done");
 
   // setup DateTime
@@ -361,7 +535,8 @@ void setup()
   setupDateTime();
 
   // update POI in SD card
-  updatePOI();
+  LOGD(TAG, "Going to update POI");
+  updatePOI(); // TBD
 
   // setup webAPIs
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -387,6 +562,15 @@ void setup()
 
   server.on("/disconnectBLE", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send_P(200, "text/plain", disconnectBLE().c_str()); });
+
+  server.on("/requestDeviceName", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send_P(200, "text/plain", requestDeviceName().c_str()); });
+
+  server.on("/getDeviceName", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send_P(200, "text/plain", getDeviceName().c_str()); });
+
+  server.on("/reset", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send_P(200, "text/plain", reset().c_str()); });
 
   AsyncCallbackJsonWebHandler *handler = new AsyncCallbackJsonWebHandler("/mosfetCtrl", [](AsyncWebServerRequest *request, JsonVariant &json)
                                                                          {
@@ -420,9 +604,39 @@ void setup()
 
   // initalize pack volt not to disconnect WiFi
   MyBLE::packBasicInfo.Volts = 15000;
-  ambientlLastSent = millis();
+  // ambientlLastSent = millis() + 100000;
+  ambientlLastSent = 0;
+  LOGD(TAG, "ambientlLastSent initial value: " + String(ambientlLastSent));
+
+  esp_sleep_enable_timer_wakeup(deepSleepTimeSec * uS_TO_S_FACTOR);
+  LOGD(TAG, "Setup ESP32 to sleep for " + String(deepSleepTimeSec) + " Seconds");
 }
 
+/*
+void loop()
+{
+if (wifiMulti.run() ==
+    WL_CONNECTED)
+{ // If the connection to wifi is established successfully.
+  M5.lcd.setCursor(0, 20);
+  M5.lcd.print("WiFi connected\n\nSSID:");
+  M5.lcd.println(WiFi.SSID()); // Output Network name.
+  M5.lcd.print("RSSI: ");
+  M5.lcd.println(WiFi.RSSI()); // Output signal strength.
+  M5.lcd.print("IP address: ");
+  M5.lcd.println(WiFi.localIP()); // Output IP Address.
+  delay(1000);
+  M5.lcd.fillRect(0, 20, 180, 300,
+                  BLACK); // It's equivalent to partial screen clearance.
+}
+else
+{
+  // If the connection to wifi is not established successfully.
+  M5.lcd.print(".");
+  delay(500);
+}
+}
+*/
 void loop()
 {
   MyBLE::bleRequestData();
@@ -443,9 +657,13 @@ void loop()
   }
   if (MyBLE::packBasicInfo.Volts <= sleepVoltageMv && WiFi.isConnected())
   {
-    LOGD(TAG, "disconnecting WiFi, batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + " <= " + String(sleepVoltageMv));
+    String logStr = "disconnecting WiFi, batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + " <= " + String(sleepVoltageMv);
+    LOGD(TAG, logStr);
+    LOGLCD(TAG, logStr);
     WiFi.disconnect(true);
-    digitalWrite(WIFI_LED, LOW);
+    delay(3000);
+    lcdControl(0);
+    // digitalWrite(WIFI_LED, LOW);
     ambientSendIntervalMs = ambientSendIntervalBaseMs * 10;
   }
   if (MyBLE::packBasicInfo.Volts > wakeUpVoltageMv && !WiFi.isConnected())
@@ -454,8 +672,10 @@ void loop()
     LOGD(TAG, "woke up and WiFi reconnected, batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + " > " + String(sleepVoltageMv));
     ambientSendIntervalMs = ambientSendIntervalBaseMs;
   }
-  if (millis() - ambientlLastSent >= ambientSendIntervalMs)
+  //
+  if ((millis() - ambientlLastSent) >= ambientSendIntervalMs)
   {
+    LOGD(TAG, "millis() - ambientlLastSent: " + String(millis()) + " - " + String(ambientlLastSent) + " >= ambientSendIntervalMs: " + String(ambientSendIntervalMs));
     if (!WiFi.isConnected())
     {
       wifiConnect();
@@ -463,9 +683,31 @@ void loop()
     ambient.set(1, MyBLE::packBasicInfo.Volts / 1000.0f);
     ambient.set(2, MyBLE::packBasicInfo.Amps / 1000.0f);
     ambient.set(3, MyBLE::packCellInfo.CellDiff / 1.0f);
+    // if (numberOfTemperature == 2)
     ambient.set(4, (MyBLE::packBasicInfo.Temp1 + MyBLE::packBasicInfo.Temp2) / 2 / 10.0f);
+    // else
+    // ambient.set(4, MyBLE::packBasicInfo.Temp1 / 10.0f);
     ambient.send();
     ambientlLastSent = millis();
-    LOGD(TAG, "ambient sent, batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + ", batteryCurrent: " + String(MyBLE::packBasicInfo.Amps) + ", batteryTemp1: " + String(MyBLE::packBasicInfo.Temp1) + ", batteryTemp2: " + String(MyBLE::packBasicInfo.Temp2));
+    String logStr = "ambient sent, channelId: " + String(channelId) + ", batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + ", batteryCurrent: " + String(MyBLE::packBasicInfo.Amps) + ", batteryTemp1: " + String(MyBLE::packBasicInfo.Temp1);
+    // if (numberOfTemperature == 2)
+    logStr = logStr + ", batteryTemp2: " + String(MyBLE::packBasicInfo.Temp2);
+    LOGD(TAG, logStr);
+    M5.lcd.println(logStr);
+    if (MyBLE::packBasicInfo.Volts <= deepSleepVoltageMv)
+    {
+      String logStr = "Going to deep sleep now and wake up in " + String(deepSleepTimeSec) + " seconds";
+      LOGD(TAG, logStr);
+      LOGLCD(TAG, logStr);
+      delay(2500);
+      // esp_deep_sleep_start(); //link error
+      // M5.Axp.DeepSleep(SLEEP_SEC(5)); // link error
+      lcdControl(0);
+      sleep(deepSleepTimeSec);
+      // myDeepSleep(deepSleepTimeSec); // link error
+      // LOGD(TAG, "This will never be printed");
+    }
+    else
+      LOGD(TAG, "PackVoltage: " + String(MyBLE::packBasicInfo.Volts) + " > " + String(deepSleepVoltageMv));
   }
 }

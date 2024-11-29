@@ -199,11 +199,33 @@
                     console.error('Error:', error);
                 });
         }
+        function reset() {
+            toggleSwitch(document.getElementById('resetId'), 0);
+            fetch('/reset')
+                .then(response => {
+                    console.log('reset');
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                });
+        }
+        function getDeviceName(element) {
+            fetch('/getDeviceName')
+                .then(response => response.text())
+                .then(data => {
+                    let ele = document.getElementById("topBarId");
+                    ele.innerHTML = data;
+                    ele.style.fontSize = '60px';
+                })
+                .catch((error) => {
+                    console.error('Error:', error);
+                });
+        }
     </script>
 </head>
 
 <body>
-    <div class="topBar">Jun's Battery</div>
+    <div class="topBar" id="topBarId" onclick="getDeviceName()">Jun's Battery</div>
 
     <div class="title size-3">Total Voltage</div>
     <div class="title size-3">Current</div>
@@ -264,12 +286,20 @@
                     <input type="checkbox" name="dischargeStatus" />
                 </div>
             </td>
-            <td rowspan="2">
+            <!--<td rowspan="2">
                 <div class="switch-title">
                     BLE
                 </div>
                 <div class="toggle" id="BLEStatusId" onclick="disconnectBLE(this)">
                     <input type="checkbox" name="BLEStatus" />
+                </div>
+            </td>-->
+            <td rowspan="2">
+                <div class="switch-title">
+                    Reset
+                </div>
+                <div class="toggle" id="resetId" onclick="reset()">
+                    <input type="checkbox" name="resetStatus" />
                 </div>
             </td>
             <td style="border-right:none; width:120px">
@@ -473,7 +503,8 @@
 
                         toggleSwitch(document.getElementById('chargeStatusId'), data.mosfetStatus.chargeStatus);
                         toggleSwitch(document.getElementById('dischargeStatusId'), data.mosfetStatus.dischargeStatus);
-                        toggleSwitch(document.getElementById('BLEStatusId'), data.BLEConnected);
+                        //toggleSwitch(document.getElementById('BLEStatusId'), data.BLEConnected);
+                        toggleSwitch(document.getElementById('resetId'), 1);
                         for (i = 0; i < 4; i++) {
                             toggleSwitch(document.getElementById('cellBalanceId-' + i), data.cellBalanceList[i]);
                         }

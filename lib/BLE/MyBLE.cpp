@@ -5,8 +5,8 @@
 
 using namespace MyLOG;
 
-//#include "MyAdvertisedDeviceCallbacks.hpp"
-//#include "MyClientCallback.hpp"
+// #include "MyAdvertisedDeviceCallbacks.hpp"
+// #include "MyClientCallback.hpp"
 
 #define commSerial Serial
 
@@ -45,6 +45,7 @@ const String MyBLE::TAG = "MyBLE";
 const long MyBLE::interval = 2000;
 unsigned long MyBLE::previousMillis = 0;
 bool MyBLE::toggle = false;
+bool MyBLE::toggle2 = true;
 byte MyBLE::ctrlCommand = 0;
 byte MyBLE::commandParam = 0;
 
@@ -68,7 +69,9 @@ bool MyBLE::newPacketReceived = false;
 
 packBasicInfoStruct MyBLE::packBasicInfo;
 packCellInfoStruct MyBLE::packCellInfo;
-char *MyBLE::deviceName;
+// char *MyBLE::deviceName;
+String MyBLE::deviceNameStr = "not retrieved from the device yet";
+int MyBLE::numberOfTemperature = 2;
 
 int16_t MyBLE::two_ints_into16(int highbyte, int lowbyte) // turns two bytes into a single long integer
 {
@@ -83,12 +86,13 @@ bool MyBLE::processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned i
 {
     // TRACE;
     //  Expected data len
-    // if (dataLen != 0x1B)
-    if (dataLen != 0x1D) // changed by Jun
+    /* Jun, it should not be checked for variable length
+    if (dataLen != 0x1B)
     {
         LOGD(TAG, "BasicInfo data length invalid: " + String(dataLen));
         return false;
     }
+    */
 
     output->Volts = ((uint32_t)two_ints_into16(data[0], data[1])) * 10; // Resolution 10 mV -> convert to milivolts   eg 4895 > 48950mV
     output->Amps = ((int32_t)two_ints_into16(data[2], data[3])) * 10;   // Resolution 10 mA -> convert to miliamps
@@ -102,6 +106,8 @@ bool MyBLE::processBasicInfo(packBasicInfoStruct *output, byte *data, unsigned i
 
     output->Temp1 = (((uint16_t)two_ints_into16(data[23], data[24])) - 2731);
     output->Temp2 = (((uint16_t)two_ints_into16(data[25], data[26])) - 2731);
+    if (numberOfTemperature == 1)
+        output->Temp2 = output->Temp1;
     output->BalanceCodeLow = (two_ints_into16(data[12], data[13]));
     output->BalanceCodeHigh = (two_ints_into16(data[14], data[15]));
     output->MosfetStatus = ((byte)data[20]);
@@ -184,13 +190,13 @@ bool MyBLE::processCellInfo(packCellInfoStruct *output, byte *data, unsigned int
     return true;
 }
 
-bool MyBLE::processDeviceInfo(char *output, byte *data, unsigned int dataLen)
+bool MyBLE::processDeviceInfo(byte *data, unsigned int dataLen)
 {
-    for (byte i = 0; i < data[0]; i++)
-    {
-        output[i] = data[i];
-    }
-    LOGD(TAG, "Device Name: " + String(output));
+    char chars[dataLen + 1];
+    memcpy(chars, data, dataLen);
+    chars[dataLen] = '\0';
+    deviceNameStr = String(chars);
+    LOGD(TAG, "deviceNameStr: " + deviceNameStr);
     return true;
 }
 
@@ -254,14 +260,13 @@ bool MyBLE::isPacketValid(byte *packet) // check if packet is valid
     */
     // printf("checksum: %x\n", checksum);
 
-    //checksum = ((checksum ^ 0xFF) + 1) & 0xFF;
-    // printf("checksum v2: %x\n", checksum);
+    // checksum = ((checksum ^ 0xFF) + 1) & 0xFF;
+    //  printf("checksum v2: %x\n", checksum);
 
     byte rxChecksum = packet[offset + checksumLen + 1];
-    //byte checksum = calcChecksum(packet);
+    // byte checksum = calcChecksum(packet);
 
-
-    //if (checksum == rxChecksum)
+    // if (checksum == rxChecksum)
     if (calcChecksum(packet) == rxChecksum)
 
     {
@@ -280,12 +285,14 @@ bool MyBLE::bmsProcessPacket(byte *packet)
 {
     const byte cBasicInfo3 = 3;    // type of packet 3= basic info
     const byte cCellInfo4 = 4;     // type of packet 4= individual cell info
+    const byte cDeviceName5 = 5;   // type of packet 5= Device Name
     const byte cMOSFETCtrl = 0xE1; // type of packet E1= MOSFET Control
     // TRACE;
     bool isValid = isPacketValid(packet);
 
     if (isValid != true)
     {
+        MyLOG::DISABLE_LOGD = false;
         LOGD(TAG, "Invalid packer received");
         return false;
     }
@@ -319,8 +326,16 @@ bool MyBLE::bmsProcessPacket(byte *packet)
     }
     case cMOSFETCtrl:
     {
+        MyLOG::DISABLE_LOGD = false;
         LOGD(TAG, "bmsProcessPacket, process MOSFETCtrl");
-        // result = processDeviceInfo(deviceName, data, dataLen);
+        newPacketReceived = true;
+        break;
+    }
+    case cDeviceName5:
+    {
+        MyLOG::DISABLE_LOGD = false;
+        LOGD(TAG, "bmsProcessPacket, process DeviceName");
+        result = processDeviceInfo(data, dataLen);
         newPacketReceived = true;
         break;
     }
@@ -403,6 +418,26 @@ void MyBLE::bmsGetInfo4()
     // commSerial.println("Request info4 sent");
 }
 
+void MyBLE::bmsGetInfo5()
+{
+    //   DD  A5 05 00  FF  FC  77
+    uint8_t packet[7] = {0xdd, 0xa5, 0x5, 0x0, 0xff, 0xfb, 0x77};
+    // data[5] = calcChecksum(data);
+    sendCommand(packet, sizeof(packet));
+
+    /*
+    char buff[5];
+    String printStr = "";
+    for (byte i = 0; i < 9; i++)
+    {
+        sprintf(buff, "0x%x ", packet[i]);
+        String str = buff;
+        printStr += str;
+    }
+    LOGD(TAG, printStr + " sent");
+    */
+}
+
 void MyBLE::bmsMosfetCtrl()
 {
     LOGD(TAG, "bmsMosfetCtrl: " + String(commandParam));
@@ -414,12 +449,13 @@ void MyBLE::bmsMosfetCtrl()
 
     char buff[5];
     String printStr = "";
-    for (byte i = 0; i < 9; i++) {
+    for (byte i = 0; i < 9; i++)
+    {
         sprintf(buff, "0x%x ", packet[i]);
         String str = buff;
         printStr += str;
     }
-    LOGD(TAG, printStr +" sent");
+    LOGD(TAG, printStr + " sent");
     /*
     switch (commandParam)
     {
@@ -631,21 +667,21 @@ void MyBLE::bleRequestData()
             switch (ctrlCommand) // ctrlCommand or alternate Info3 and Info4
             {
             case 1:
-            {
                 bmsMosfetCtrl();
                 ctrlCommand = 0;
                 newPacketReceived = false;
                 break;
-            }
             case 2:
-            {
                 disconnectFromServer();
                 ctrlCommand = 0;
                 newPacketReceived = false;
                 break;
-            }
+            case 3:
+                bmsGetInfo5();
+                ctrlCommand = 0;
+                newPacketReceived = false;
+                break;
             default:
-            {
                 if (toggle) // alternate info3 and info4
                 {
                     bmsGetInfo3();
@@ -661,8 +697,17 @@ void MyBLE::bleRequestData()
                     newPacketReceived = false;
                 }
                 toggle = !toggle;
+                //
+                if (toggle2)
+                {
+                    LOGD(TAG, "command to read device name to be sent");
+                    delay(1000);
+                    bmsGetInfo5();
+                    newPacketReceived = false;
+                    toggle2 = false;
+                }
+                //
                 break;
-            }
             }
         }
     }
