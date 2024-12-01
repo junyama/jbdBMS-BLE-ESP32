@@ -29,6 +29,8 @@
 #include "MyBLE.hpp"
 #include "MyDebug.hpp"
 #include "MySdCard.hpp"
+#include "MyMqtt.hpp"
+#include <PubSubClient.h>
 
 using namespace MyLOG;
 
@@ -78,6 +80,67 @@ unsigned int sleepVoltageMv = 13199; // mV
 unsigned int wakeUpVoltageMv = 13399;
 unsigned int deepSleepVoltageMv = 13199; // mV
 unsigned int deepSleepTimeSec = 900;     // seconds
+
+// MQTT
+//WiFiClient espClient;
+PubSubClient mqttClient(client);
+//MyMqtt myMqtt(client);
+
+// const char* ssid        = "Jun-Home-AP";
+// const char* password    = "takehiro";
+const char *mqtt_server = "broker.emqx.io";
+
+//unsigned long lastMsg = 0;
+//#define MSG_BUFFER_SIZE (50)
+//char msg[MSG_BUFFER_SIZE];
+//int msgCounter = 0;
+
+//void setupWifi();
+//void callback(char *topic, byte *payload, unsigned int length);
+//void reConnect();
+
+/*
+void callback(char *topic, byte *payload, unsigned int length)
+{
+  M5.Lcd.print("Message arrived [");
+  M5.Lcd.print(topic);
+  M5.Lcd.print("] ");
+  for (int i = 0; i < length; i++)
+  {
+    M5.Lcd.print((char)payload[i]);
+  }
+  M5.Lcd.println();
+}
+*/
+
+/*
+void reConnect()
+{
+  while (!mqttClient.connected())
+  {
+    M5.Lcd.print("Attempting MQTT connection...");
+    // Create a random mqttClient ID.  
+    String mqttClientId = "M5Stack-";
+    mqttClientId += String(random(0xffff), HEX);
+    // Attempt to connect. 
+    if (mqttClient.connect(mqttClientId.c_str()))
+    {
+      M5.Lcd.printf("\nSuccess\n");
+      // Once connected, publish an announcement to the topic.
+      mqttClient.publish("junichi_M5Core2", "MQTT reconnected");
+      // ... and resubscribe.  
+      //mqttClient.subscribe("M5Stack");
+    }
+    else
+    {
+      M5.Lcd.print("failed, rc=");
+      M5.Lcd.print(mqttClient.state());
+      M5.Lcd.println("try again in 5 seconds");
+      delay(5000);
+    }
+  }
+}
+*/
 
 // local functions definitions
 
@@ -608,35 +671,15 @@ void setup()
   ambientlLastSent = 0;
   LOGD(TAG, "ambientlLastSent initial value: " + String(ambientlLastSent));
 
-  esp_sleep_enable_timer_wakeup(deepSleepTimeSec * uS_TO_S_FACTOR);
-  LOGD(TAG, "Setup ESP32 to sleep for " + String(deepSleepTimeSec) + " Seconds");
+  // esp_sleep_enable_timer_wakeup(deepSleepTimeSec * uS_TO_S_FACTOR);
+  // LOGD(TAG, "Setup ESP32 to sleep for " + String(deepSleepTimeSec) + " Seconds");
+
+  // MQTT setup
+  mqttClient.setServer(mqtt_server, 1883); // Sets the server details.
+  //myMqtt.client.setServer(mqtt_server, 1883); 
+  //mqttClient.setCallback(callback); // Sets the message callback function.
 }
 
-/*
-void loop()
-{
-if (wifiMulti.run() ==
-    WL_CONNECTED)
-{ // If the connection to wifi is established successfully.
-  M5.lcd.setCursor(0, 20);
-  M5.lcd.print("WiFi connected\n\nSSID:");
-  M5.lcd.println(WiFi.SSID()); // Output Network name.
-  M5.lcd.print("RSSI: ");
-  M5.lcd.println(WiFi.RSSI()); // Output signal strength.
-  M5.lcd.print("IP address: ");
-  M5.lcd.println(WiFi.localIP()); // Output IP Address.
-  delay(1000);
-  M5.lcd.fillRect(0, 20, 180, 300,
-                  BLACK); // It's equivalent to partial screen clearance.
-}
-else
-{
-  // If the connection to wifi is not established successfully.
-  M5.lcd.print(".");
-  delay(500);
-}
-}
-*/
 void loop()
 {
   MyBLE::bleRequestData();
@@ -689,11 +732,42 @@ void loop()
     // ambient.set(4, MyBLE::packBasicInfo.Temp1 / 10.0f);
     ambient.send();
     ambientlLastSent = millis();
-    String logStr = "ambient sent, channelId: " + String(channelId) + ", batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + ", batteryCurrent: " + String(MyBLE::packBasicInfo.Amps) + ", batteryTemp1: " + String(MyBLE::packBasicInfo.Temp1);
+
+    String megStr = "batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + ", batteryCurrent: " + String(MyBLE::packBasicInfo.Amps) + ", batteryTemp1: " + String(MyBLE::packBasicInfo.Temp1);
     // if (numberOfTemperature == 2)
-    logStr = logStr + ", batteryTemp2: " + String(MyBLE::packBasicInfo.Temp2);
+    megStr = megStr + ", batteryTemp2: " + String(MyBLE::packBasicInfo.Temp2);
+
+    /* MQTT publish
+    if (!mqttClient.connected())
+    {
+      reConnect();
+    }
+    mqttClient.publish("junichi_M5Core2", megStr.c_str());
+    */
+
+    // MQTT publish2
+    if (!mqttClient.connected())
+    {
+      MyMqtt::reConnect(&mqttClient); 
+    }
+    mqttClient.publish("junichi_M5Core2", megStr.c_str());
+    //
+
+    /* MQTT publish3
+    if (!mqttClient.connected())
+    {
+      reConnect();
+    }
+    mqttClient.publish("junichi_M5Core2", megStr.c_str());
+    */
+
+    String logStr = "ambient sent, channelId: " + String(channelId) + ", message: " + megStr;
     LOGD(TAG, logStr);
-    M5.lcd.println(logStr);
+    LOGLCD(TAG, logStr);
+    logStr = "MQTT publised, topic: junichi_M5Core2, message: " + megStr;
+    LOGD(TAG, logStr);
+    LOGLCD(TAG, logStr);
+
     if (MyBLE::packBasicInfo.Volts <= deepSleepVoltageMv)
     {
       String logStr = "Going to deep sleep now and wake up in " + String(deepSleepTimeSec) + " seconds";
