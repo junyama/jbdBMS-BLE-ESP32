@@ -52,7 +52,7 @@ static const String TAG = "main";
 JsonDocument configJson;
 
 // Wi-Fi client
-WiFiClient client;
+WiFiClient wifiClient;
 
 // WiFiMulti
 WiFiMulti wifiMulti;
@@ -82,65 +82,9 @@ unsigned int deepSleepVoltageMv = 13199; // mV
 unsigned int deepSleepTimeSec = 900;     // seconds
 
 // MQTT
-//WiFiClient espClient;
-PubSubClient mqttClient(client);
-//MyMqtt myMqtt(client);
+PubSubClient mqttClient(wifiClient);
 
-// const char* ssid        = "Jun-Home-AP";
-// const char* password    = "takehiro";
 const char *mqtt_server = "broker.emqx.io";
-
-//unsigned long lastMsg = 0;
-//#define MSG_BUFFER_SIZE (50)
-//char msg[MSG_BUFFER_SIZE];
-//int msgCounter = 0;
-
-//void setupWifi();
-//void callback(char *topic, byte *payload, unsigned int length);
-//void reConnect();
-
-/*
-void callback(char *topic, byte *payload, unsigned int length)
-{
-  M5.Lcd.print("Message arrived [");
-  M5.Lcd.print(topic);
-  M5.Lcd.print("] ");
-  for (int i = 0; i < length; i++)
-  {
-    M5.Lcd.print((char)payload[i]);
-  }
-  M5.Lcd.println();
-}
-*/
-
-/*
-void reConnect()
-{
-  while (!mqttClient.connected())
-  {
-    M5.Lcd.print("Attempting MQTT connection...");
-    // Create a random mqttClient ID.  
-    String mqttClientId = "M5Stack-";
-    mqttClientId += String(random(0xffff), HEX);
-    // Attempt to connect. 
-    if (mqttClient.connect(mqttClientId.c_str()))
-    {
-      M5.Lcd.printf("\nSuccess\n");
-      // Once connected, publish an announcement to the topic.
-      mqttClient.publish("junichi_M5Core2", "MQTT reconnected");
-      // ... and resubscribe.  
-      //mqttClient.subscribe("M5Stack");
-    }
-    else
-    {
-      M5.Lcd.print("failed, rc=");
-      M5.Lcd.print(mqttClient.state());
-      M5.Lcd.println("try again in 5 seconds");
-      delay(5000);
-    }
-  }
-}
-*/
 
 // local functions definitions
 
@@ -156,7 +100,10 @@ void setupDateTime()
   /** changed from 0.2.x **/
   DateTime.begin(15 * 1000 /* timeout param */);
   if (DateTime.isTimeValid())
+  {
     LOGD(TAG, "DateTime setup done");
+    LOGLCD(TAG, "DateTime setup done");
+  }
   else
     LOGD(TAG, "Failed to get time from server.");
 }
@@ -173,6 +120,7 @@ void wifiScann()
   {
     Serial.print(n);
     LOGD(TAG, " networks found");
+    LOGLCD(TAG, " networks found");
     for (int i = 0; i < n; ++i)
     {
       // Print SSID and RSSI for each network found
@@ -506,54 +454,6 @@ void setup()
   {
     LOGD(TAG, "SPIFFS mount done");
   }
-  /*
-  // loading configuration from a file
-  // Allocate the JSON document
-  // StaticJsonDocument<512> configJson;
-  String fileName = "/";
-  fileName += CONFIG_FILE;
-  File fileHandle = LittleFS.open(fileName, "r");
-  if (fileHandle)
-  {
-    String jsonStr = fileHandle.readStringUntil('\n');
-    LOGD(TAG, fileName + ": " + jsonStr);
-    fileHandle.close();
-
-    // Deserialize the JSON document
-    DeserializationError error = deserializeJson(configJson, jsonStr);
-
-    // Test if parsing succeeds.
-    if (error)
-    {
-      Serial.print(F("deserializeJson() failed: "));
-      LOGD(TAG, error.f_str());
-    }
-    else
-    {
-      int numberOfTemperature = configJson["numberOfTemperature"];
-      if (numberOfTemperature)
-        MyBLE::numberOfTemperature = numberOfTemperature;
-      int channelId_ = configJson["ambient"]["channelId"];
-      if (channelId_)
-        channelId = channelId_;
-      const char *writeKey_ = configJson["ambient"]["writeKey"];
-      if (writeKey_)
-        writeKey = writeKey_;
-      int sleepVoltageMv_ = configJson["sleepVoltageMv"];
-      if (sleepVoltageMv_)
-        sleepVoltageMv = sleepVoltageMv_;
-      int wakeUpVoltageMv_ = configJson["wakeUpVoltageMv"];
-      if (wakeUpVoltageMv_)
-        wakeUpVoltageMv = wakeUpVoltageMv_;
-      int deepSleepVoltageMv_ = configJson["deepSleepVoltageMv"];
-      if (deepSleepVoltageMv_)
-        deepSleepVoltageMv = deepSleepVoltageMv_;
-      int deepSleepTimeSec_ = configJson["deepSleepTimeSec"];
-      if (deepSleepTimeSec_)
-        deepSleepTimeSec = deepSleepTimeSec_;
-    }
-  }
-  */
 
   // load config.json from SD
   loadConfig();
@@ -578,10 +478,6 @@ void setup()
     wifiMulti.addAP(configJson["wifi"][i]["ssid"], configJson["wifi"][i]["pass"]);
   }
   //
-
-  // wifiMulti.addAP("Jun-Home-AP", "takehiro"); // Storage wifi configuration information 1.
-  // wifiMulti.addAP("Jun-FS020W", "takehiro");
-
   LOGD(TAG, "going to scann WiFi");
   wifiScann();
 
@@ -658,7 +554,7 @@ void setup()
   server.begin();
 
   // init ambient channelID and key
-  ambient.begin(channelId, writeKey.c_str(), &client);
+  ambient.begin(channelId, writeKey.c_str(), &wifiClient);
   LOGD(TAG, "ambient setup done");
 
   // setup BLE
@@ -676,8 +572,7 @@ void setup()
 
   // MQTT setup
   mqttClient.setServer(mqtt_server, 1883); // Sets the server details.
-  //myMqtt.client.setServer(mqtt_server, 1883); 
-  //mqttClient.setCallback(callback); // Sets the message callback function.
+  // mqttClient.setCallback(callback); // Sets the message callback function.
 }
 
 void loop()
@@ -733,9 +628,9 @@ void loop()
     ambient.send();
     ambientlLastSent = millis();
 
-    String megStr = "batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + ", batteryCurrent: " + String(MyBLE::packBasicInfo.Amps) + ", batteryTemp1: " + String(MyBLE::packBasicInfo.Temp1);
+    String megStr = "{\"batteryVoltage\": " + String(MyBLE::packBasicInfo.Volts) + ", \"batteryCurrent\": " + String(MyBLE::packBasicInfo.Amps) + ", \"batteryTemp1\": " + String(MyBLE::packBasicInfo.Temp1);
     // if (numberOfTemperature == 2)
-    megStr = megStr + ", batteryTemp2: " + String(MyBLE::packBasicInfo.Temp2);
+    megStr = megStr + ", \"batteryTemp2\": " + String(MyBLE::packBasicInfo.Temp2) + "}";
 
     /* MQTT publish
     if (!mqttClient.connected())
@@ -748,18 +643,9 @@ void loop()
     // MQTT publish2
     if (!mqttClient.connected())
     {
-      MyMqtt::reConnect(&mqttClient); 
+      MyMqtt::reConnect(&mqttClient);
     }
     mqttClient.publish("junichi_M5Core2", megStr.c_str());
-    //
-
-    /* MQTT publish3
-    if (!mqttClient.connected())
-    {
-      reConnect();
-    }
-    mqttClient.publish("junichi_M5Core2", megStr.c_str());
-    */
 
     String logStr = "ambient sent, channelId: " + String(channelId) + ", message: " + megStr;
     LOGD(TAG, logStr);

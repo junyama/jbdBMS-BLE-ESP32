@@ -24,29 +24,27 @@ void MyMqtt::reConnect(PubSubClient *client)
     LOGD(TAG, "reConnect() called");
     while (!client->connected())
     {
-        M5.Lcd.print("Attempting MQTT connection...");
+        LOGD(TAG, "Attempting MQTT connection...");
         // Create a random client ID.
         String clientId = "M5Stack-";
         clientId += String(random(0xffff), HEX);
         // Attempt to connect.
-        LOGD(TAG, "before connect");
-        bool isConnected = client->connect(clientId.c_str()); // crash here!!!!!!!!!!!
-        LOGD(TAG, "after connect");
+        bool isConnected = client->connect(clientId.c_str());
         // if (client.connect(clientId.c_str()))
         if (isConnected)
         {
-            M5.Lcd.printf("\nSuccess\n");
+            LOGD(TAG, "Connected.");
             // Once connected, publish an announcement to the topic.
             client->publish("junichi_M5Core2", "MQTT reconnected");
             // ... and resubscribe.
-            //client.subscribe("M5Stack");
+            // client.subscribe("M5Stack");
         }
         else
         {
-            LOGD(TAG, "5");
-            M5.Lcd.print("failed, rc=");
-            M5.Lcd.print(client->state());
-            M5.Lcd.println("try again in 5 seconds");
+            String logStr = "failed, rc = ";
+            logStr = logStr + (client->state());
+            logStr = " try again in 5 seconds";
+            LOGLCD(TAG, logStr);
             delay(5000);
         }
     }

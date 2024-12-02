@@ -643,6 +643,7 @@ void MyBLE::bleRequestData()
         if (connectToServer())
         {
             LOGD(TAG, "connected to the BLE Server.");
+            LOGLCD(TAG, "connected to the BLE Server.");
             // lcdConnected();
         }
         else
