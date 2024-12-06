@@ -25,12 +25,13 @@
 #include <ESPDateTime.h>
 #include <Ambient.h>
 #include <HTTPClient.h>
+#include <PubSubClient.h>
 
 #include "MyBLE.hpp"
 #include "MyDebug.hpp"
 #include "MySdCard.hpp"
 #include "MyMqtt.hpp"
-#include <PubSubClient.h>
+#include "PowerSaving.hpp"
 
 using namespace MyLOG;
 
@@ -50,6 +51,7 @@ static const String TAG = "main";
 
 // StaticJsonDocument<1024> configJson;
 JsonDocument configJson;
+DeserializationError error = deserializeJson(configJson, "{\"numberOfTemperature\": 1, \"sleepVoltageMv\": 12999, \"wakeUpVoltageMv\": 13899, \"deepSleepVoltageMv\": 11699, \"deepSleepTimeSec\": 900, \"wifi\": [{\"ssid\": \"Jun-Home-AP\", \"pass\": \"takehiro\"}, {\"ssid\": \"Jun-FS020W\", \"pass\": \"takehiro\"}], \"poiURL\": \"http://junichi2.ddns.net/\", \"ambient\": {\"channelId\": 50366, \"writeKey\": \"ccb476294fe16acd\", \"ambientSendIntervalBaseMs\": 60000}}");
 
 // Wi-Fi client
 WiFiClient wifiClient;
@@ -83,8 +85,9 @@ unsigned int deepSleepTimeSec = 900;     // seconds
 
 // MQTT
 PubSubClient mqttClient(wifiClient);
-
-const char *mqtt_server = "broker.emqx.io";
+String mqtt_server = "broker.emqx.io"; // default
+int mqtt_port = 1883;                  // default
+String mqtt_topic = "junichi_M5Core2"; // default
 
 // local functions definitions
 
@@ -259,80 +262,58 @@ void loadConfig()
   if (!SD.begin(5))
   {
     LOGD(TAG, "SD Card Mount Failed");
-    // SD.end();
     return;
   }
   LOGD(TAG, "SD Card initalized");
   String fileName = "/";
   fileName += CONFIG_FILE;
-  // MySdCard::readFile(SD, fileName);
   LOGD(TAG, "opeing file from SD Card");
   File myFile = SD.open(fileName, FILE_READ); // Open the file "/config.json" in read mode.
-  if (myFile)
-  {
-    // Read the data from the file and print it until the reading is complate.
-    String jsontext;
-    // jsontext = "{\"numberOfTemperature\": 1, \"sleepVoltageMv\": 12999, \"wakeUpVoltageMv\": 13899, \"deepSleepVoltageMv\": 11699, \"deepSleepTimeSec\": 900, \"wifi\": [{\"ssid\": \"Jun-Home-AP\", \"pass\": \"takehiro\"}, {\"ssid\": \"Jun-FS020W\", \"pass\": \"takehiro\"}], \"poiURL\": \"http://junichi2.ddns.net/\", \"ambient\": {\"channelId\": 50366, \"writeKey\": \"ccb476294fe16acd\", \"ambientSendIntervalBaseMs\": 60000}}";
-    /*
-    while (myFile.available())
-    {
-      M5.Lcd.write(myFile.read());
-    }
-    */
-    while (myFile.available())
-    {
-      jsontext = jsontext + myFile.readString();
-    }
-    LOGD(TAG, "jsontext: " + jsontext);
-    DeserializationError error = deserializeJson(configJson, jsontext.c_str());
-    if (error)
-    {
-      LOGD(TAG, "Deserialization error.");
-    }
-    else
-    {
-      /*
-      int sleepVoltageMv = configJson["sleepVoltageMv"];
-      String writeKey = configJson["ambient"]["writeKey"];
-      LOGD(TAG, "sleepVoltageMv: " + String(sleepVoltageMv));
-      LOGD(TAG, "writeKey: " + writeKey);
-      */
-
-      int numberOfTemperature = configJson["numberOfTemperature"];
-      if (numberOfTemperature)
-        MyBLE::numberOfTemperature = numberOfTemperature;
-      int channelId_ = configJson["ambient"]["channelId"];
-      if (channelId_)
-        channelId = channelId_;
-      const char *writeKey_ = configJson["ambient"]["writeKey"];
-      if (writeKey_)
-      {
-        writeKey = writeKey_;
-        LOGD(TAG, "writeKey: " + writeKey);
-      }
-      int sleepVoltageMv_ = configJson["sleepVoltageMv"];
-      if (sleepVoltageMv_)
-      {
-        sleepVoltageMv = sleepVoltageMv_;
-        LOGD(TAG, "sleepVoltageMv: " + String(sleepVoltageMv));
-      }
-      int wakeUpVoltageMv_ = configJson["wakeUpVoltageMv"];
-      if (wakeUpVoltageMv_)
-        wakeUpVoltageMv = wakeUpVoltageMv_;
-      int deepSleepVoltageMv_ = configJson["deepSleepVoltageMv"];
-      if (deepSleepVoltageMv_)
-        deepSleepVoltageMv = deepSleepVoltageMv_;
-      int deepSleepTimeSec_ = configJson["deepSleepTimeSec"];
-      if (deepSleepTimeSec_)
-        deepSleepTimeSec = deepSleepTimeSec_;
-    }
-
-    myFile.close();
-  }
-  else
+  if (!myFile)
   {
     LOGD(TAG, "error opening /config.json"); // If the file is not open.
+    return;
   }
+  String textStr = "";
+  while (myFile.available())
+  {
+    textStr = textStr + myFile.readString();
+  }
+  myFile.close();
+  LOGD(TAG, "configJsonText: " + textStr);
+  DeserializationError error = deserializeJson(configJson, textStr.c_str());
+  if (error)
+  {
+    LOGD(TAG, "Deserialization error.");
+    return;
+  }
+  int numberOfTemperature = configJson["numberOfTemperature"];
+  if (numberOfTemperature)
+    MyBLE::numberOfTemperature = numberOfTemperature;
+  int channelId_ = configJson["ambient"]["channelId"];
+  if (channelId_)
+    channelId = channelId_;
+  const char *writeKey_ = configJson["ambient"]["writeKey"];
+  if (writeKey_)
+  {
+    writeKey = writeKey_;
+    LOGD(TAG, "writeKey: " + writeKey);
+  }
+  int sleepVoltageMv_ = configJson["sleepVoltageMv"];
+  if (sleepVoltageMv_)
+  {
+    sleepVoltageMv = sleepVoltageMv_;
+    LOGD(TAG, "sleepVoltageMv: " + String(sleepVoltageMv));
+  }
+  int wakeUpVoltageMv_ = configJson["wakeUpVoltageMv"];
+  if (wakeUpVoltageMv_)
+    wakeUpVoltageMv = wakeUpVoltageMv_;
+  int deepSleepVoltageMv_ = configJson["deepSleepVoltageMv"];
+  if (deepSleepVoltageMv_)
+    deepSleepVoltageMv = deepSleepVoltageMv_;
+  int deepSleepTimeSec_ = configJson["deepSleepTimeSec"];
+  if (deepSleepTimeSec_)
+    deepSleepTimeSec = deepSleepTimeSec_;
 }
 
 void updatePOI()
@@ -423,6 +404,7 @@ void myDeepSleep(int sec)
   M5.Axp.DeepSleep(SLEEP_SEC(sec));
 }
 
+/*
 void lcdControl(int mode)
 {
   switch (mode)
@@ -436,6 +418,7 @@ void lcdControl(int mode)
     M5.Axp.SetLcdVoltage(3000);
   }
 }
+*/
 
 void setup()
 {
@@ -571,12 +554,31 @@ void setup()
   // LOGD(TAG, "Setup ESP32 to sleep for " + String(deepSleepTimeSec) + " Seconds");
 
   // MQTT setup
-  mqttClient.setServer(mqtt_server, 1883); // Sets the server details.
-  // mqttClient.setCallback(callback); // Sets the message callback function.
+  String mqttServerConf = configJson["MQTT"]["server"];
+  if (mqttServerConf != "null")
+    mqtt_server = mqttServerConf;
+  LOGD(TAG, "MQTT Server: " + mqtt_server);
+  int mqqtPortConf = configJson["MQTT"]["port"];
+  if (mqqtPortConf)
+    mqtt_port = mqqtPortConf;
+  LOGD(TAG, "MQTT Server port: " + mqtt_port);
+  String mqttTopicConf = configJson["MQTT"]["topic"];
+  if (mqttTopicConf != "null")
+    mqtt_topic = mqttTopicConf;
+  LOGD(TAG, "MQTT Topic: " + mqtt_topic);
+  mqttClient.setServer(mqtt_server.c_str(), mqtt_port); // Sets the server details.
+  mqttClient.setCallback(MyMqtt::callback);             // Sets the message callback function.
+
+  // Button setup
+  PowerSaving::setup();
+
+  PowerSaving::enable();
 }
 
 void loop()
 {
+  PowerSaving::loop();
+
   MyBLE::bleRequestData();
   if (MyBLE::newPacketReceived == true)
   {
@@ -600,7 +602,7 @@ void loop()
     LOGLCD(TAG, logStr);
     WiFi.disconnect(true);
     delay(3000);
-    lcdControl(0);
+    PowerSaving::enable();
     // digitalWrite(WIFI_LED, LOW);
     ambientSendIntervalMs = ambientSendIntervalBaseMs * 10;
   }
@@ -609,6 +611,11 @@ void loop()
     wifiConnect();
     LOGD(TAG, "woke up and WiFi reconnected, batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + " > " + String(sleepVoltageMv));
     ambientSendIntervalMs = ambientSendIntervalBaseMs;
+    if (!mqttClient.connected())
+    {
+      MyMqtt::reConnect(&mqttClient);
+    }
+    mqttClient.loop();
   }
   //
   if ((millis() - ambientlLastSent) >= ambientSendIntervalMs)
@@ -645,12 +652,14 @@ void loop()
     {
       MyMqtt::reConnect(&mqttClient);
     }
-    mqttClient.publish("junichi_M5Core2", megStr.c_str());
+    // mqttClient.loop();
+    mqttClient.publish(mqtt_topic.c_str(), megStr.c_str());
 
     String logStr = "ambient sent, channelId: " + String(channelId) + ", message: " + megStr;
     LOGD(TAG, logStr);
     LOGLCD(TAG, logStr);
-    logStr = "MQTT publised, topic: junichi_M5Core2, message: " + megStr;
+    logStr = "MQTT publised, topic: " + mqtt_topic;
+    logStr = logStr + ", message: " + megStr;
     LOGD(TAG, logStr);
     LOGLCD(TAG, logStr);
 
@@ -662,7 +671,7 @@ void loop()
       delay(2500);
       // esp_deep_sleep_start(); //link error
       // M5.Axp.DeepSleep(SLEEP_SEC(5)); // link error
-      lcdControl(0);
+      PowerSaving::enable();
       sleep(deepSleepTimeSec);
       // myDeepSleep(deepSleepTimeSec); // link error
       // LOGD(TAG, "This will never be printed");

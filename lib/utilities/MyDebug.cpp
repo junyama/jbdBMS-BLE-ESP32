@@ -4,6 +4,7 @@
 #include "MyDebug.hpp"
 
 bool MyLOG::DISABLE_LOGD = false;
+bool MyLOG::DISABLE_LOGLCD = false;
 
 void MyLOG::LOGD(String tag, String text)
 {
@@ -16,10 +17,8 @@ void MyLOG::LOGD(String tag, String text)
 }
 void MyLOG::LOGLCD(String tag, String text)
 {
-    if (!DISABLE_LOGD)
+    if (!DISABLE_LOGLCD)
     {
-        M5.Lcd.wakeup();
-        M5.Axp.SetLcdVoltage(3000);
         //M5.Lcd.print("[" + DateTime.toString() + "] ");
         M5.Lcd.print(tag + ": ");
         M5.Lcd.println(text);

@@ -9,6 +9,17 @@ const String MyMqtt::TAG = "MyMqtt";
 
 void MyMqtt::callback(char *topic, byte *payload, unsigned int length)
 {
+    String logStr = "Message arrived[";
+    logStr = logStr + topic;
+    logStr = logStr + "] ";
+    for (int i = 0; i < length; i++)
+    {
+        logStr = logStr + (char)payload[i];
+    }
+    LOGD(TAG, logStr);
+    LOGLCD(TAG, logStr);
+
+    /*
     M5.Lcd.print("Message arrived [");
     M5.Lcd.print(topic);
     M5.Lcd.print("] ");
@@ -17,6 +28,7 @@ void MyMqtt::callback(char *topic, byte *payload, unsigned int length)
         M5.Lcd.print((char)payload[i]);
     }
     M5.Lcd.println();
+    */
 }
 
 void MyMqtt::reConnect(PubSubClient *client)
@@ -37,7 +49,7 @@ void MyMqtt::reConnect(PubSubClient *client)
             // Once connected, publish an announcement to the topic.
             client->publish("junichi_M5Core2", "MQTT reconnected");
             // ... and resubscribe.
-            // client.subscribe("M5Stack");
+            client->subscribe("junichi_M5Core2");
         }
         else
         {

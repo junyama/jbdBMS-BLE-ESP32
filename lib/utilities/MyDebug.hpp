@@ -8,6 +8,7 @@
 namespace MyLOG
 {
     extern bool DISABLE_LOGD;
+    extern bool DISABLE_LOGLCD;
     void LOGD(String tag, String text);
     void LOGLCD(String tag, String text);
 }
