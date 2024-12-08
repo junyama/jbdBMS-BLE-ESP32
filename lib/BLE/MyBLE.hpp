@@ -77,8 +77,8 @@ private:
 	static bool bmsProcessPacket(byte *packet);
 	static void notifyCallback(BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify);
 	static bool bleCollectPacket(char *data, uint32_t dataSize); // reconstruct packet from BLE incomming data, called by notifyCallback function
-	//static void bmsDisableDischarge();
-	//static void bmsEnableDischarge();
+	// static void bmsDisableDischarge();
+	// static void bmsEnableDischarge();
 	static void bmsMosfetCtrl();
 
 public:
@@ -98,7 +98,7 @@ public:
 
 	static packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
 	static packCellInfoStruct packCellInfo;	  // here shall be the latest data got from BMS
-	//static char *deviceName;
+	// static char *deviceName;
 	static String deviceNameStr;
 	static int numberOfTemperature;
 
@@ -108,8 +108,9 @@ public:
 	static void bleStartup();
 	static void disconnectFromServer(); // does not work as intended, but automatically reconnected
 	static void bleRequestData();
-	//static void bmsDisableCharge();
-	//static void bmsEnableCharge();
+	// static void bmsDisableCharge();
+	// static void bmsEnableCharge();
+	static void mosfetCtrl(int chargeStatus, int dischargeStatus);
 };
 
 #endif /* MY_BLE_HPP */

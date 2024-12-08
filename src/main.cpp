@@ -85,9 +85,9 @@ unsigned int deepSleepTimeSec = 900;     // seconds
 
 // MQTT
 PubSubClient mqttClient(wifiClient);
-String mqtt_server = "broker.emqx.io"; // default
-int mqtt_port = 1883;                  // default
-String mqtt_topic = "junichi_M5Core2"; // default
+String mqtt_server = "broker.emqx.io";  // default
+int mqtt_port = 1883;                   // default
+String mqtt_topic = "junichi/M5Core2/"; // default
 
 // local functions definitions
 
@@ -404,6 +404,93 @@ void myDeepSleep(int sec)
   M5.Axp.DeepSleep(SLEEP_SEC(sec));
 }
 
+/* MQTT functions
+void reConnect()
+{
+  LOGD(TAG, "reConnect() called");
+  while (!mqttClient.connected())
+  {
+    LOGD(TAG, "Attempting MQTT connection...");
+    // Create a random mqttClient ID.
+    String clientId = "M5Stack-";
+    clientId += String(random(0xffff), HEX);
+    // Attempt to connect.
+    bool isConnected = mqttClient.connect(clientId.c_str());
+    // if (client.connect(clientId.c_str()))
+    if (isConnected)
+    {
+      LOGD(TAG, "Connected.");
+      // Once connected, publish an announcement to the topic.
+      mqttClient.publish(("stat/" + mqtt_topic + "STATE").c_str(), "MQTT reconnected");
+      // ... and resubscribe.
+      String subsTopic = "cmnd/" + mqtt_topic;
+      subsTopic = subsTopic + "#";
+      LOGD(TAG, "subscribing: " + subsTopic);
+      mqttClient.subscribe(subsTopic.c_str());
+    }
+    else
+    {
+      String logStr = "failed, rc = ";
+      logStr = logStr + (mqttClient.state());
+      logStr = " try again in 5 seconds";
+      LOGLCD(TAG, logStr);
+      delay(5000);
+    }
+  }
+}
+
+void callback(char *topic, byte *payload, unsigned int length)
+{
+  String msgStr = "";
+  for (int i = 0; i < length; i++)
+  {
+    msgStr = msgStr + (char)payload[i];
+  }
+  String logStr = "Message arrived[";
+  logStr = logStr + topic;
+  logStr = logStr + "] ";
+  logStr = logStr + msgStr;
+  LOGD(TAG, logStr);
+  LOGLCD(TAG, logStr);
+
+  if (String(topic).equals("cmnd/" + mqtt_topic + "getState"))
+  {
+    String megStr = "{\"batteryVoltage\": " + String(MyBLE::packBasicInfo.Volts) + ", \"batteryCurrent\": " + String(MyBLE::packBasicInfo.Amps) + ", \"batteryTemp1\": " + String(MyBLE::packBasicInfo.Temp1);
+    // if (numberOfTemperature == 2)
+    megStr = megStr + ", \"batteryTemp2\": " + String(MyBLE::packBasicInfo.Temp2) + "}";
+    if (!mqttClient.connected())
+    {
+      // MyMqtt::reConnect(&mqttClient);
+      reConnect();
+    }
+    LOGD(TAG, "responding to getState!");
+    mqttClient.publish(("stat/" + mqtt_topic + "RESULT").c_str(), megStr.c_str());
+    return;
+  }
+  if (!msgStr)
+    return;
+  JsonDocument megJson;
+  DeserializationError error = deserializeJson(megJson, msgStr.c_str());
+  if (error)
+  {
+    LOGD(TAG, "Deserialization error: " + msgStr);
+    return;
+  }
+  // msgJson process here
+}
+*/
+
+/*
+M5.Lcd.print("Message arrived [");
+M5.Lcd.print(topic);
+M5.Lcd.print("] ");
+for (int i = 0; i < length; i++)
+{
+    M5.Lcd.print((char)payload[i]);
+}
+M5.Lcd.println();
+*/
+
 /*
 void lcdControl(int mode)
 {
@@ -541,6 +628,7 @@ void setup()
   LOGD(TAG, "ambient setup done");
 
   // setup BLE
+  LOGD(TAG, "going to setup BLE");
   MyBLE::bleStartup();
   LOGD(TAG, "BLE setup done");
 
@@ -566,8 +654,11 @@ void setup()
   if (mqttTopicConf != "null")
     mqtt_topic = mqttTopicConf;
   LOGD(TAG, "MQTT Topic: " + mqtt_topic);
-  mqttClient.setServer(mqtt_server.c_str(), mqtt_port); // Sets the server details.
-  mqttClient.setCallback(MyMqtt::callback);             // Sets the message callback function.
+  // mqttClient.setServer(mqtt_server.c_str(), mqtt_port); // Sets the server details.
+  // mqttClient.setCallback(MyMqtt::callback);  // Sets the message callback function.
+  // mqttClient.setCallback(callback); // Sets the message callback function.
+  // MyMqtt::server = mqtt_server;
+  MyMqtt::setup(&mqttClient, mqtt_server, mqtt_port, mqtt_topic);
 
   // Button setup
   PowerSaving::setup();
@@ -606,16 +697,22 @@ void loop()
     // digitalWrite(WIFI_LED, LOW);
     ambientSendIntervalMs = ambientSendIntervalBaseMs * 10;
   }
+  else
+  {
+    // if (!mqttClient.connected())
+    if (!MyMqtt::connected())
+    {
+      MyMqtt::reConnect();
+      // reConnect();
+    }
+    // mqttClient.loop();
+    MyMqtt::loop();
+  }
   if (MyBLE::packBasicInfo.Volts > wakeUpVoltageMv && !WiFi.isConnected())
   {
     wifiConnect();
     LOGD(TAG, "woke up and WiFi reconnected, batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + " > " + String(sleepVoltageMv));
     ambientSendIntervalMs = ambientSendIntervalBaseMs;
-    if (!mqttClient.connected())
-    {
-      MyMqtt::reConnect(&mqttClient);
-    }
-    mqttClient.loop();
   }
   //
   if ((millis() - ambientlLastSent) >= ambientSendIntervalMs)
@@ -648,17 +745,20 @@ void loop()
     */
 
     // MQTT publish2
-    if (!mqttClient.connected())
+    // if (!mqttClient.connected())
+    if (!MyMqtt::connected())
     {
-      MyMqtt::reConnect(&mqttClient);
+      MyMqtt::reConnect();
+      // reConnect();
     }
     // mqttClient.loop();
-    mqttClient.publish(mqtt_topic.c_str(), megStr.c_str());
+    // mqttClient.publish(("stat/" + mqtt_topic + "STATE").c_str(), megStr.c_str());
+    MyMqtt::publish("stat/" + mqtt_topic + "STATE", megStr);
 
     String logStr = "ambient sent, channelId: " + String(channelId) + ", message: " + megStr;
     LOGD(TAG, logStr);
     LOGLCD(TAG, logStr);
-    logStr = "MQTT publised, topic: " + mqtt_topic;
+    logStr = "MQTT publised, topic: stat/" + mqtt_topic + "STATE";
     logStr = logStr + ", message: " + megStr;
     LOGD(TAG, logStr);
     LOGLCD(TAG, logStr);

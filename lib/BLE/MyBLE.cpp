@@ -737,4 +737,11 @@ void MyBLE::sendCommand(uint8_t *data, uint32_t dataLen)
     }
 }
 
+void MyBLE::mosfetCtrl(int chargeStatus, int dischargeStatus)
+{
+  // LOGD(TAG, "/mosfetCtrl called");
+  ctrlCommand = 1;
+  commandParam = (byte)chargeStatus + (byte)dischargeStatus * 2;
+}
+
 #endif /* MY_BLE_CPP_ */
