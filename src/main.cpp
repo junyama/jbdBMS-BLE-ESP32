@@ -82,6 +82,8 @@ unsigned int sleepVoltageMv = 13199; // mV
 unsigned int wakeUpVoltageMv = 13399;
 unsigned int deepSleepVoltageMv = 13199; // mV
 unsigned int deepSleepTimeSec = 900;     // seconds
+unsigned int rebootCount = 0;
+unsigned int rebootLimit = 5;
 
 // MQTT
 PubSubClient mqttClient(wifiClient);
@@ -267,7 +269,7 @@ void loadConfig()
   LOGD(TAG, "SD Card initalized");
   String fileName = "/";
   fileName += CONFIG_FILE;
-  LOGD(TAG, "opeing file from SD Card");
+  LOGD(TAG, "opeing file from SD Card in read mode");
   File myFile = SD.open(fileName, FILE_READ); // Open the file "/config.json" in read mode.
   if (!myFile)
   {
@@ -314,6 +316,21 @@ void loadConfig()
   int deepSleepTimeSec_ = configJson["deepSleepTimeSec"];
   if (deepSleepTimeSec_)
     deepSleepTimeSec = deepSleepTimeSec_;
+  int rebootCount_ = configJson["rebootCount"];
+  if (rebootCount_)
+    rebootCount = rebootCount_;
+  int rebootLimit_ = configJson["rebootLimit"];
+  if (rebootLimit_)
+    rebootLimit = rebootLimit_;
+}
+
+void saveConfig()
+{
+  String fileName = "/";
+  fileName += CONFIG_FILE;
+  LOGD(TAG, "opeing file from SD Card in write mode");
+  File file = SD.open(fileName, FILE_WRITE);
+  serializeJson(configJson, file);
 }
 
 void updatePOI()
@@ -392,120 +409,21 @@ WiFiMulti wifiMulti;
 
 void sleep(int sec)
 {
+  WiFi.disconnect(true);
+  
   M5.Axp.SetLed(0);
   M5.Axp.SetLcdVoltage(0);
   M5.Axp.DeepSleep(SLEEP_SEC(sec));
 }
 
-void myDeepSleep(int sec)
+void myDeepSleep(int sec) //link error
 {
+  WiFi.disconnect(true);
+
   M5.Axp.SetLed(0);
   M5.Axp.SetLcdVoltage(0);
   M5.Axp.DeepSleep(SLEEP_SEC(sec));
 }
-
-/* MQTT functions
-void reConnect()
-{
-  LOGD(TAG, "reConnect() called");
-  while (!mqttClient.connected())
-  {
-    LOGD(TAG, "Attempting MQTT connection...");
-    // Create a random mqttClient ID.
-    String clientId = "M5Stack-";
-    clientId += String(random(0xffff), HEX);
-    // Attempt to connect.
-    bool isConnected = mqttClient.connect(clientId.c_str());
-    // if (client.connect(clientId.c_str()))
-    if (isConnected)
-    {
-      LOGD(TAG, "Connected.");
-      // Once connected, publish an announcement to the topic.
-      mqttClient.publish(("stat/" + mqtt_topic + "STATE").c_str(), "MQTT reconnected");
-      // ... and resubscribe.
-      String subsTopic = "cmnd/" + mqtt_topic;
-      subsTopic = subsTopic + "#";
-      LOGD(TAG, "subscribing: " + subsTopic);
-      mqttClient.subscribe(subsTopic.c_str());
-    }
-    else
-    {
-      String logStr = "failed, rc = ";
-      logStr = logStr + (mqttClient.state());
-      logStr = " try again in 5 seconds";
-      LOGLCD(TAG, logStr);
-      delay(5000);
-    }
-  }
-}
-
-void callback(char *topic, byte *payload, unsigned int length)
-{
-  String msgStr = "";
-  for (int i = 0; i < length; i++)
-  {
-    msgStr = msgStr + (char)payload[i];
-  }
-  String logStr = "Message arrived[";
-  logStr = logStr + topic;
-  logStr = logStr + "] ";
-  logStr = logStr + msgStr;
-  LOGD(TAG, logStr);
-  LOGLCD(TAG, logStr);
-
-  if (String(topic).equals("cmnd/" + mqtt_topic + "getState"))
-  {
-    String megStr = "{\"batteryVoltage\": " + String(MyBLE::packBasicInfo.Volts) + ", \"batteryCurrent\": " + String(MyBLE::packBasicInfo.Amps) + ", \"batteryTemp1\": " + String(MyBLE::packBasicInfo.Temp1);
-    // if (numberOfTemperature == 2)
-    megStr = megStr + ", \"batteryTemp2\": " + String(MyBLE::packBasicInfo.Temp2) + "}";
-    if (!mqttClient.connected())
-    {
-      // MyMqtt::reConnect(&mqttClient);
-      reConnect();
-    }
-    LOGD(TAG, "responding to getState!");
-    mqttClient.publish(("stat/" + mqtt_topic + "RESULT").c_str(), megStr.c_str());
-    return;
-  }
-  if (!msgStr)
-    return;
-  JsonDocument megJson;
-  DeserializationError error = deserializeJson(megJson, msgStr.c_str());
-  if (error)
-  {
-    LOGD(TAG, "Deserialization error: " + msgStr);
-    return;
-  }
-  // msgJson process here
-}
-*/
-
-/*
-M5.Lcd.print("Message arrived [");
-M5.Lcd.print(topic);
-M5.Lcd.print("] ");
-for (int i = 0; i < length; i++)
-{
-    M5.Lcd.print((char)payload[i]);
-}
-M5.Lcd.println();
-*/
-
-/*
-void lcdControl(int mode)
-{
-  switch (mode)
-  {
-  case 0:
-    M5.Lcd.sleep();
-    M5.Axp.SetLcdVoltage(0);
-    break;
-  default:
-    M5.Lcd.wakeup();
-    M5.Axp.SetLcdVoltage(3000);
-  }
-}
-*/
 
 void setup()
 {
@@ -527,6 +445,23 @@ void setup()
 
   // load config.json from SD
   loadConfig();
+  if (rebootCount > rebootLimit)
+  {
+    rebootCount = 0;
+    configJson["rebootCount"] = 0;
+    saveConfig();
+    LOGD(TAG, "going to deep sleep because of reboot limit.....");
+    delay(3000);
+    PowerSaving::enable();
+    sleep(deepSleepTimeSec);
+  }
+  else
+  {
+    rebootCount++;
+    LOGD(TAG, "rebootCount incremented: " + String(rebootCount));
+    configJson["rebootCount"] = rebootCount;
+    saveConfig();
+  }
 
   // setup WiFi
   WiFi.mode(WIFI_STA);
@@ -627,6 +562,7 @@ void setup()
   ambient.begin(channelId, writeKey.c_str(), &wifiClient);
   LOGD(TAG, "ambient setup done");
 
+  saveConfig();
   // setup BLE
   LOGD(TAG, "going to setup BLE");
   MyBLE::bleStartup();
@@ -699,14 +635,16 @@ void loop()
   }
   else
   {
-    // if (!mqttClient.connected())
-    if (!MyMqtt::connected())
+    if (WiFi.isConnected())
     {
-      MyMqtt::reConnect();
-      // reConnect();
+      if (!MyMqtt::connected())
+      {
+        MyMqtt::reConnect();
+        // reConnect();
+      }
+      // mqttClient.loop();
+      MyMqtt::loop();
     }
-    // mqttClient.loop();
-    MyMqtt::loop();
   }
   if (MyBLE::packBasicInfo.Volts > wakeUpVoltageMv && !WiFi.isConnected())
   {
@@ -734,17 +672,12 @@ void loop()
 
     String megStr = "{\"batteryVoltage\": " + String(MyBLE::packBasicInfo.Volts) + ", \"batteryCurrent\": " + String(MyBLE::packBasicInfo.Amps) + ", \"batteryTemp1\": " + String(MyBLE::packBasicInfo.Temp1);
     // if (numberOfTemperature == 2)
-    megStr = megStr + ", \"batteryTemp2\": " + String(MyBLE::packBasicInfo.Temp2) + "}";
+    
+    megStr = megStr + ", \"batteryTemp2\": " + String(MyBLE::packBasicInfo.Temp2);
+    megStr = megStr + ", \"chargeStatus\": " + String(MyBLE::packBasicInfo.MosfetStatus & 1);
+    megStr = megStr + ", \"dischargeStatus\": " + String((MyBLE::packBasicInfo.MosfetStatus & 2) >> 1) + "}";
 
-    /* MQTT publish
-    if (!mqttClient.connected())
-    {
-      reConnect();
-    }
-    mqttClient.publish("junichi_M5Core2", megStr.c_str());
-    */
-
-    // MQTT publish2
+    // MQTT publish
     // if (!mqttClient.connected())
     if (!MyMqtt::connected())
     {

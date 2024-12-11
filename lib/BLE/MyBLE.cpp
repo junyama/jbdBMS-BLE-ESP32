@@ -554,8 +554,9 @@ void MyBLE::printCellInfo() // debug all data to uart
 
 void MyBLE::bleStartup()
 {
+    LOGD(TAG, "bleStartup");
     BLEDevice::init("");
-
+    LOGD(TAG, "init done");
     // Retrieve a Scanner and set the callback we want to use to be informed when we
     // have detected a new device.  Specify that we want active scanning and start the
     // scan to run for 5 seconds.
@@ -739,9 +740,9 @@ void MyBLE::sendCommand(uint8_t *data, uint32_t dataLen)
 
 void MyBLE::mosfetCtrl(int chargeStatus, int dischargeStatus)
 {
-  // LOGD(TAG, "/mosfetCtrl called");
-  ctrlCommand = 1;
-  commandParam = (byte)chargeStatus + (byte)dischargeStatus * 2;
+    // LOGD(TAG, "/mosfetCtrl called");
+    ctrlCommand = 1;
+    commandParam = (byte)chargeStatus + (byte)dischargeStatus * 2;
 }
 
 #endif /* MY_BLE_CPP_ */

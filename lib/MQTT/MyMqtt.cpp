@@ -23,6 +23,9 @@ void MyMqtt::setup(PubSubClient *mqttClient, String mqttServer, int mqttPort, St
 
 void MyMqtt::callback(char *topic_, byte *payload, unsigned int length)
 {
+    int chargeStatus = MyBLE::packBasicInfo.MosfetStatus & 1;
+    int dischargeStatus = (MyBLE::packBasicInfo.MosfetStatus & 2) >> 1;
+
     String msgStr = "";
     for (int i = 0; i < length; i++)
     {
@@ -48,36 +51,90 @@ void MyMqtt::callback(char *topic_, byte *payload, unsigned int length)
         client->publish(("stat/" + topic + "RESULT").c_str(), megStr.c_str());
         return;
     }
-    if (String(topic_).equals("cmnd/" + topic + "charge"))
+    if ((String(topic_).equals("cmnd/" + topic + "charge")) || ((String(topic_).equals("cmnd/" + topic + "discharge"))))
     {
-        int dischargeStatus = (MyBLE::packBasicInfo.MosfetStatus & 2) >> 1;
-        LOGD(TAG, "discharge status: " + String(dischargeStatus));
-        if (!msgStr)
+        if (String(topic_).equals("cmnd/" + topic + "charge"))
         {
-            //
+            LOGD(TAG, "charge status: " + String(chargeStatus) + ", discharge status: " + String(dischargeStatus));
+            if (msgStr.equals(""))
+            {
+                if (chargeStatus)
+                    msgStr = "ON";
+                else
+                    msgStr = "OFF";
+            }
+            else if (msgStr.equals("0"))
+            {
+                MyBLE::mosfetCtrl(0, dischargeStatus);
+                chargeStatus = 0;
+                msgStr = "OFF";
+            }
+            else if (msgStr.equals("1"))
+            {
+                MyBLE::mosfetCtrl(1, dischargeStatus);
+                chargeStatus = 1;
+                msgStr = "ON";
+            }
+            else if (msgStr.equals("toggle"))
+            {
+                MyBLE::mosfetCtrl((chargeStatus ^ 1), dischargeStatus);
+                chargeStatus = chargeStatus ^ 1;
+                msgStr = "TOGGLE";
+            }
+            else
+            {
+                msgStr = "INVALID";
+            }
+            if (!client->connected())
+            {
+                reConnect();
+            }
+            LOGD(TAG, "responding to charge!");
+            client->publish(("stat/" + topic + "CHARGE").c_str(), msgStr.c_str());
         }
-        else if (msgStr.equals("0"))
+        else if (String(topic_).equals("cmnd/" + topic + "discharge"))
         {
-            MyBLE::mosfetCtrl(0, 1);
-            msgStr = "OFF";
+            LOGD(TAG, "charge status: " + String(chargeStatus) + ", discharge status: " + String(dischargeStatus));
+            if (msgStr.equals(""))
+            {
+                if (dischargeStatus)
+                    msgStr = "ON";
+                else
+                    msgStr = "OFF";
+            }
+            else if (msgStr.equals("0"))
+            {
+                MyBLE::mosfetCtrl(chargeStatus, 0);
+                dischargeStatus = 0;
+                msgStr = "OFF";
+            }
+            else if (msgStr.equals("1"))
+            {
+                MyBLE::mosfetCtrl(chargeStatus, 1);
+                dischargeStatus = 1;
+                msgStr = "ON";
+            }
+            else if (msgStr.equals("toggle"))
+            {
+                MyBLE::mosfetCtrl(chargeStatus, (dischargeStatus ^ 1));
+                dischargeStatus = dischargeStatus ^ 1;
+                msgStr = "TOGGLE";
+            }
+            else
+            {
+                msgStr = "INVALID";
+            }
+            if (!client->connected())
+            {
+                reConnect();
+            }
+            LOGD(TAG, "responding to discharge!");
+            client->publish(("stat/" + topic + "DISCARGE").c_str(), msgStr.c_str());
         }
-        else if (msgStr.equals("1"))
-        {
-            MyBLE::mosfetCtrl(1, 1);
-            msgStr = "ON";
-        }
-        else
-            return;
-        if (!client->connected())
-        {
-            reConnect();
-        }
-        LOGD(TAG, "responding to charge!");
-        client->publish(("stat/" + topic + "charge").c_str(), msgStr.c_str());
+        msgStr = "{\"chargeStatus\": " + String(chargeStatus) + ", \"didchargeStatus\": " + String(dischargeStatus) + "}";
+        client->publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
         return;
     }
-    if (!msgStr)
-        return;
     JsonDocument megJson;
     DeserializationError error = deserializeJson(megJson, msgStr.c_str());
     if (error)
