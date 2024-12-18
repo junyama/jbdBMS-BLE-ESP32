@@ -27,13 +27,13 @@ void PowerSaving::setup()
 void PowerSaving::enable()
 {
     LOGD(TAG, "enabling power save......");
-    LOGLCD(TAG, "enabling power save......");
+    //LOGLCD(TAG, "enabling power save......");
     delay(2000);
     M5.Lcd.sleep();
     M5.Axp.SetLcdVoltage(0);
     PowerSaving::lcdState = 0;
     M5.Axp.SetLed(0);
-    MyLOG::DISABLE_LOGLCD = true;
+    //MyLOG::DISABLE_LOGLCD = true;
 }
 
 void PowerSaving::disable()
@@ -42,7 +42,7 @@ void PowerSaving::disable()
     M5.Axp.SetLcdVoltage(3000);
     PowerSaving::lcdState = 1;
     M5.Axp.SetLed(1);
-    MyLOG::DISABLE_LOGLCD = false;
+    //MyLOG::DISABLE_LOGLCD = false;
 }
 
 void PowerSaving::loop()

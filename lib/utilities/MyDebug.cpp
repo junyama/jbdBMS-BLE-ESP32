@@ -4,7 +4,7 @@
 #include "MyDebug.hpp"
 
 bool MyLOG::DISABLE_LOGD = false;
-bool MyLOG::DISABLE_LOGLCD = false;
+bool MyLOG::DISABLE_LOGLCD = true;
 
 void MyLOG::LOGD(String tag, String text)
 {

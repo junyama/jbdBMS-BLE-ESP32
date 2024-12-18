@@ -32,6 +32,7 @@
 #include "MySdCard.hpp"
 #include "MyMqtt.hpp"
 #include "PowerSaving.hpp"
+#include "MyLcd.hpp"
 
 using namespace MyLOG;
 
@@ -51,7 +52,7 @@ static const String TAG = "main";
 
 // StaticJsonDocument<1024> configJson;
 JsonDocument configJson;
-DeserializationError error = deserializeJson(configJson, "{\"numberOfTemperature\": 1, \"sleepVoltageMv\": 12999, \"wakeUpVoltageMv\": 13899, \"deepSleepVoltageMv\": 11699, \"deepSleepTimeSec\": 900, \"wifi\": [{\"ssid\": \"Jun-Home-AP\", \"pass\": \"takehiro\"}, {\"ssid\": \"Jun-FS020W\", \"pass\": \"takehiro\"}], \"poiURL\": \"http://junichi2.ddns.net/\", \"ambient\": {\"channelId\": 50366, \"writeKey\": \"ccb476294fe16acd\", \"ambientSendIntervalBaseMs\": 60000}}");
+DeserializationError error = deserializeJson(configJson, "{\"numberOfTemperature\": 1, \"sleepVoltageMv\": 12999, \"wakeUpVoltageMv\": 13899, \"deepSleepVoltageMv\": 11699, \"deepSleepTimeSec\": 900, \"wifi\": [{\"ssid\": \"Jun-Home-AP\", \"pass\": \"xxxxx\"}, {\"ssid\": \"Jun-FS020W\", \"pass\": \"xxxxx\"}], \"poiURL\": \"http://junichi2.ddns.net/\", \"ambient\": {\"channelId\": 50366, \"writeKey\": \"ccb476294fe16acd\", \"ambientSendIntervalBaseMs\": 60000}}");
 
 // Wi-Fi client
 WiFiClient wifiClient;
@@ -144,7 +145,7 @@ void wifiScann()
 int wifiConnect()
 {
   LOGD(TAG, "Connecting Wifi...");
-  M5.lcd.print("Connecting Wifi..."); // Serial port format output string.
+  M5.Lcd.print("Connecting Wifi..."); // Serial port format output string.
 
   // if the connection to the stongest hotstop is lost, it will connect to the next network on the list
   if (wifiMulti.run(connectTimeoutMs) == WL_CONNECTED)
@@ -160,13 +161,13 @@ int wifiConnect()
     // digitalWrite(WIFI_LED, HIGH);
     // LOGD(TAG, "WIFI_LED ON");
 
-    M5.lcd.setCursor(0, 20);
-    M5.lcd.print("WiFi connected\n\nSSID:");
-    M5.lcd.println(WiFi.SSID()); // Output Network name.
-    M5.lcd.print("RSSI: ");
-    M5.lcd.println(WiFi.RSSI()); // Output signal strength.
-    M5.lcd.print("IP address: ");
-    M5.lcd.println(WiFi.localIP()); // Output IP Address.
+    M5.Lcd.setCursor(0, 20);
+    M5.Lcd.print("WiFi connected\n\nSSID:");
+    M5.Lcd.println(WiFi.SSID()); // Output Network name.
+    M5.Lcd.print("RSSI: ");
+    M5.Lcd.println(WiFi.RSSI()); // Output signal strength.
+    M5.Lcd.print("IP address: ");
+    M5.Lcd.println(WiFi.localIP()); // Output IP Address.
 
     return 0;
   }
@@ -410,13 +411,13 @@ WiFiMulti wifiMulti;
 void sleep(int sec)
 {
   WiFi.disconnect(true);
-  
+
   M5.Axp.SetLed(0);
   M5.Axp.SetLcdVoltage(0);
   M5.Axp.DeepSleep(SLEEP_SEC(sec));
 }
 
-void myDeepSleep(int sec) //link error
+void myDeepSleep(int sec) // link error
 {
   WiFi.disconnect(true);
 
@@ -427,9 +428,10 @@ void myDeepSleep(int sec) //link error
 
 void setup()
 {
-  M5.begin(); // Init M5Core2.
-  M5.Lcd.setTextFont(2);
+  M5.begin();         // Init M5Core2.
   Serial.begin(9600); // Standard hardware serial port
+
+  MyLcd::setup();
 
   // LITTLEFS
   LOGD(TAG, "mounting SPIFFS");
@@ -621,12 +623,14 @@ void loop()
     LOGD(TAG, "CellMedian: " + String(MyBLE::packCellInfo.CellMedian));
     MyBLE::printCellInfo();
     DISABLE_LOGD = false;
+
+    MyLcd::showBatteryInfo(MyBLE::packBasicInfo.Volts / 1000.0f, MyBLE::packBasicInfo.Amps / 1000.0f, MyBLE::packCellInfo.CellDiff / 1.0f, MyBLE::packBasicInfo.Temp1 / 10.0f, MyBLE::packBasicInfo.Temp2 / 10.0f, MyBLE::packBasicInfo.CapacityRemainPercent);
   }
   if (MyBLE::packBasicInfo.Volts <= sleepVoltageMv && WiFi.isConnected())
   {
     String logStr = "disconnecting WiFi, batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + " <= " + String(sleepVoltageMv);
     LOGD(TAG, logStr);
-    LOGLCD(TAG, logStr);
+    //LOGLCD(TAG, logStr);
     WiFi.disconnect(true);
     delay(3000);
     PowerSaving::enable();
@@ -670,9 +674,11 @@ void loop()
     ambient.send();
     ambientlLastSent = millis();
 
+    MyLcd::showBatteryInfo(MyBLE::packBasicInfo.Volts / 1000.0f, MyBLE::packBasicInfo.Amps / 1000.0f, MyBLE::packCellInfo.CellDiff / 1.0f, MyBLE::packBasicInfo.Temp1 / 10.0f, MyBLE::packBasicInfo.Temp2 / 10.0f, MyBLE::packBasicInfo.CapacityRemainPercent);
+
     String megStr = "{\"batteryVoltage\": " + String(MyBLE::packBasicInfo.Volts) + ", \"batteryCurrent\": " + String(MyBLE::packBasicInfo.Amps) + ", \"batteryTemp1\": " + String(MyBLE::packBasicInfo.Temp1);
     // if (numberOfTemperature == 2)
-    
+
     megStr = megStr + ", \"batteryTemp2\": " + String(MyBLE::packBasicInfo.Temp2);
     megStr = megStr + ", \"chargeStatus\": " + String(MyBLE::packBasicInfo.MosfetStatus & 1);
     megStr = megStr + ", \"dischargeStatus\": " + String((MyBLE::packBasicInfo.MosfetStatus & 2) >> 1) + "}";
@@ -690,17 +696,17 @@ void loop()
 
     String logStr = "ambient sent, channelId: " + String(channelId) + ", message: " + megStr;
     LOGD(TAG, logStr);
-    LOGLCD(TAG, logStr);
+    //LOGLCD(TAG, logStr);
     logStr = "MQTT publised, topic: stat/" + mqtt_topic + "STATE";
     logStr = logStr + ", message: " + megStr;
     LOGD(TAG, logStr);
-    LOGLCD(TAG, logStr);
+    //LOGLCD(TAG, logStr);
 
     if (MyBLE::packBasicInfo.Volts <= deepSleepVoltageMv)
     {
       String logStr = "Going to deep sleep now and wake up in " + String(deepSleepTimeSec) + " seconds";
       LOGD(TAG, logStr);
-      LOGLCD(TAG, logStr);
+      //LOGLCD(TAG, logStr);
       delay(2500);
       // esp_deep_sleep_start(); //link error
       // M5.Axp.DeepSleep(SLEEP_SEC(5)); // link error
