@@ -39,7 +39,7 @@ using namespace MyLOG;
 // #include <JbdBms.h>
 // #include <LittleFS.h>
 
-#define LittleFS SPIFFS
+//#define LittleFS SPIFFS
 #define CONFIG_FILE "config.json"
 
 // #define WIFI_LED 32
@@ -331,7 +331,7 @@ void saveConfig()
   fileName += CONFIG_FILE;
   LOGD(TAG, "opeing file from SD Card in write mode");
   File file = SD.open(fileName, FILE_WRITE);
-  serializeJson(configJson, file);
+  serializeJsonPretty(configJson, file);
 }
 
 void updatePOI()
@@ -357,7 +357,7 @@ void updatePOI()
     LOGD(TAG, buff);
     String indexJsonStr = http.getString();
     Serial.println(indexJsonStr);
-    MySdCard::writeFile(SPIFFS, "/poi/index.json", indexJsonStr.c_str());
+    //MySdCard::writeFile(SPIFFS, "/poi/index.json", indexJsonStr.c_str());
     DeserializationError error = deserializeJson(poiIndexJson, indexJsonStr);
     if (error)
     {
@@ -435,7 +435,7 @@ void setup()
 
   // LITTLEFS
   LOGD(TAG, "mounting SPIFFS");
-  if (!LittleFS.begin(true))
+  if (!SPIFFS.begin(true))
   {
     LOGD(TAG, "SPIFFS mount failed");
     return;
@@ -506,11 +506,12 @@ void setup()
 
   // setup webAPIs
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(LittleFS, "/index.html"); });
+            { request->send(SPIFFS, "/index.html"); });
 
   server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(LittleFS, "/favicon.ico"); });
+            { request->send(SPIFFS, "/favicon.ico"); });
 
+  /*
   server.on("/justgage/raphael.min.js", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send(LittleFS, "/raphael.min.js"); });
 
@@ -521,8 +522,9 @@ void setup()
             { request->send(LittleFS, "/log.txt"); });
 
   server.on("/poi/index.json", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(LittleFS, "/poi/index.json"); });
+            { request->send(SD, "/PersonalPOI/index.json"); });
 
+  */
   server.on("/getValues", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send_P(200, "appicatlion/json", getValues().c_str()); });
 
@@ -543,7 +545,7 @@ void setup()
     //LOGD(TAG, "/mosfetCtrl called");
     JsonObject jsonObj = json.as<JsonObject>();
     String jsonStr;
-    serializeJson(jsonObj, jsonStr);
+    serializeJsonPretty(jsonObj, jsonStr);
     LOGD(TAG, "posted json: " + jsonStr);
     MyBLE::ctrlCommand = 1;
     MyBLE::commandParam = (byte)jsonObj["chargeStatus"] + (byte)jsonObj["dischargeStatus"] * 2;
@@ -630,7 +632,7 @@ void loop()
   {
     String logStr = "disconnecting WiFi, batteryVoltage: " + String(MyBLE::packBasicInfo.Volts) + " <= " + String(sleepVoltageMv);
     LOGD(TAG, logStr);
-    //LOGLCD(TAG, logStr);
+    // LOGLCD(TAG, logStr);
     WiFi.disconnect(true);
     delay(3000);
     PowerSaving::enable();
@@ -696,17 +698,17 @@ void loop()
 
     String logStr = "ambient sent, channelId: " + String(channelId) + ", message: " + megStr;
     LOGD(TAG, logStr);
-    //LOGLCD(TAG, logStr);
+    // LOGLCD(TAG, logStr);
     logStr = "MQTT publised, topic: stat/" + mqtt_topic + "STATE";
     logStr = logStr + ", message: " + megStr;
     LOGD(TAG, logStr);
-    //LOGLCD(TAG, logStr);
+    // LOGLCD(TAG, logStr);
 
     if (MyBLE::packBasicInfo.Volts <= deepSleepVoltageMv)
     {
       String logStr = "Going to deep sleep now and wake up in " + String(deepSleepTimeSec) + " seconds";
       LOGD(TAG, logStr);
-      //LOGLCD(TAG, logStr);
+      // LOGLCD(TAG, logStr);
       delay(2500);
       // esp_deep_sleep_start(); //link error
       // M5.Axp.DeepSleep(SLEEP_SEC(5)); // link error

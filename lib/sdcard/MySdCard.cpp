@@ -48,7 +48,7 @@ void MySdCard::listDir(fs::FS &fs, const char *dirname, uint8_t levels)
 
 void MySdCard::createDir(fs::FS &fs, const char *path)
 {
-   LOGD(TAG, "Creating Dir: " + String(path));
+    LOGD(TAG, "Creating Dir: " + String(path));
     if (fs.mkdir(path))
     {
         LOGD(TAG, "Directry created");
@@ -101,27 +101,32 @@ void MySdCard::removeDirR(fs::FS &fs, const char *path)
         }
         file = root.openNextFile();
     }
-    //LOGD(TAG, "Removing directory: " + String(path));
+    // LOGD(TAG, "Removing directory: " + String(path));
     removeDir(fs, path);
-    //LOGD(TAG, "Removed directory: " + String(path));
+    // LOGD(TAG, "Removed directory: " + String(path));
 }
 
-void MySdCard::readFile(fs::FS &fs, const char *path)
+void MySdCard::readFile(fs::FS &fs, const char *path, String& output)
 {
-    Serial.printf("Reading file: %s\n", path);
+    LOGD(TAG, "Reading file: " + String(path));
 
-    File file = fs.open(path);
+    File file = fs.open(path, FILE_READ);
     if (!file)
     {
         LOGD(TAG, "Failed to open file for reading");
         return;
     }
-
-    LOGD(TAG, "Read from file: ");
+    output = "";
+    while (file.available())
+    {
+        output = output + file.readString();
+    }
+    /*
     while (file.available())
     {
         Serial.write(file.read());
     }
+    */
     file.close();
 }
 
