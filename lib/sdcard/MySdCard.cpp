@@ -7,6 +7,16 @@ using namespace MyLOG;
 
 const String MySdCard::TAG = "MySdCard";
 
+void MySdCard::setup()
+{
+    while (false == SD.begin(GPIO_NUM_4, SPI, 15000000)) {
+    M5.Lcd.println("Insert SD card...");
+    delay(2000);
+  }
+  M5.Lcd.println("SD card recognized!");
+
+}
+
 void MySdCard::listDir(fs::FS &fs, const char *dirname, uint8_t levels)
 {
     LOGD(TAG, "Listing directory: " + String(dirname));

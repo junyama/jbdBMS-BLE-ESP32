@@ -39,7 +39,7 @@ using namespace MyLOG;
 // #include <JbdBms.h>
 // #include <LittleFS.h>
 
-//#define LittleFS SPIFFS
+// #define LittleFS SPIFFS
 #define CONFIG_FILE "config.json"
 
 // #define WIFI_LED 32
@@ -145,7 +145,7 @@ void wifiScann()
 int wifiConnect()
 {
   LOGD(TAG, "Connecting Wifi...");
-  M5.Lcd.print("Connecting Wifi..."); // Serial port format output string.
+  M5.Lcd.println("Connecting Wifi..."); // Serial port format output string.
 
   // if the connection to the stongest hotstop is lost, it will connect to the next network on the list
   if (wifiMulti.run(connectTimeoutMs) == WL_CONNECTED)
@@ -161,8 +161,8 @@ int wifiConnect()
     // digitalWrite(WIFI_LED, HIGH);
     // LOGD(TAG, "WIFI_LED ON");
 
-    M5.Lcd.setCursor(0, 20);
-    M5.Lcd.print("WiFi connected\n\nSSID:");
+    // M5.Lcd.setCursor(0, 20);
+    M5.Lcd.print("WiFi connected to\nSSID:");
     M5.Lcd.println(WiFi.SSID()); // Output Network name.
     M5.Lcd.print("RSSI: ");
     M5.Lcd.println(WiFi.RSSI()); // Output signal strength.
@@ -262,11 +262,13 @@ String reset()
 
 void loadConfig()
 {
+  /*
   if (!SD.begin(5))
   {
     LOGD(TAG, "SD Card Mount Failed");
     return;
   }
+  //
   LOGD(TAG, "SD Card initalized");
   String fileName = "/";
   fileName += CONFIG_FILE;
@@ -283,6 +285,12 @@ void loadConfig()
     textStr = textStr + myFile.readString();
   }
   myFile.close();
+  */
+  String fileName = "/";
+  fileName += CONFIG_FILE;
+  String textStr = "";
+  MySdCard::readFile(SD, fileName.c_str(), textStr);
+
   LOGD(TAG, "configJsonText: " + textStr);
   DeserializationError error = deserializeJson(configJson, textStr.c_str());
   if (error)
@@ -329,21 +337,14 @@ void saveConfig()
 {
   String fileName = "/";
   fileName += CONFIG_FILE;
-  LOGD(TAG, "opeing file from SD Card in write mode");
-  File file = SD.open(fileName, FILE_WRITE);
-  serializeJsonPretty(configJson, file);
+  String jsonStr;
+  serializeJsonPretty(configJson, jsonStr);
+  LOGD(TAG, "writing configuration file: " + fileName);
+  MySdCard::writeFile(SD, fileName.c_str(), jsonStr.c_str());
 }
 
 void updatePOI()
 {
-  if (!SD.begin(5))
-  {
-    LOGD(TAG, "SD Card Mount Failed");
-    // SD.end();
-    return;
-  }
-  // const size_t CAPACITY = JSON_ARRAY_SIZE(500);
-  // DynamicJsonDocument poiIndexJson(CAPACITY);
   JsonDocument poiIndexJson;
   HTTPClient http;
   const char *poiURL_ = configJson["poiURL"];
@@ -357,17 +358,17 @@ void updatePOI()
     LOGD(TAG, buff);
     String indexJsonStr = http.getString();
     Serial.println(indexJsonStr);
-    //MySdCard::writeFile(SPIFFS, "/poi/index.json", indexJsonStr.c_str());
     DeserializationError error = deserializeJson(poiIndexJson, indexJsonStr);
     if (error)
     {
       LOGD(TAG, "deserializeJson() failed");
       LOGD(TAG, "error description: " + String(error.f_str()));
-      SD.end();
       return;
     }
     else
     {
+      M5.Lcd.println("Updating POI...");
+      
       MySdCard::listDir(SD, "/PersonalPOI", 0);
       MySdCard::removeDirR(SD, "/PersonalPOI");
       MySdCard::createDir(SD, "/PersonalPOI");
@@ -392,6 +393,7 @@ void updatePOI()
           LOGD(TAG, "GET " + POIFileName + " failed, HTTP Response code: " + String(httpResponseCode));
         }
       }
+      M5.Lcd.println("POI update done");
     }
   }
   else
@@ -400,20 +402,18 @@ void updatePOI()
   }
   // Free resources
   http.end();
-  SD.end();
+  // SD.end();
   return;
 }
 
-/*
-WiFiMulti wifiMulti;
-*/
-
 void sleep(int sec)
 {
+  sec = 5;
   WiFi.disconnect(true);
 
   M5.Axp.SetLed(0);
   M5.Axp.SetLcdVoltage(0);
+  MyBLE::disconnectFromServer();
   M5.Axp.DeepSleep(SLEEP_SEC(sec));
 }
 
@@ -445,6 +445,9 @@ void setup()
     LOGD(TAG, "SPIFFS mount done");
   }
 
+  // SD card setup
+  MySdCard::setup();
+
   // load config.json from SD
   loadConfig();
   if (rebootCount > rebootLimit)
@@ -453,6 +456,7 @@ void setup()
     configJson["rebootCount"] = 0;
     saveConfig();
     LOGD(TAG, "going to deep sleep because of reboot limit.....");
+    M5.Lcd.println("going to deep sleep because of reboot limit");
     delay(3000);
     PowerSaving::enable();
     sleep(deepSleepTimeSec);
@@ -566,9 +570,10 @@ void setup()
   ambient.begin(channelId, writeKey.c_str(), &wifiClient);
   LOGD(TAG, "ambient setup done");
 
-  saveConfig();
-  // setup BLE
+  // saveConfig();
+  //  setup BLE
   LOGD(TAG, "going to setup BLE");
+  M5.Lcd.println("going to setup BLE");
   MyBLE::bleStartup();
   LOGD(TAG, "BLE setup done");
 
