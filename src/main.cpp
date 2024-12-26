@@ -607,7 +607,9 @@ void setup()
 
   // Button setup
   PowerSaving::setup();
-
+  M5.Lcd.println("setup done!");
+  M5.Lcd.println("enabling power save.");
+  delay(2000);
   PowerSaving::enable();
 }
 
@@ -688,7 +690,9 @@ void loop()
 
     megStr = megStr + ", \"batteryTemp2\": " + String(MyBLE::packBasicInfo.Temp2);
     megStr = megStr + ", \"chargeStatus\": " + String(MyBLE::packBasicInfo.MosfetStatus & 1);
-    megStr = megStr + ", \"dischargeStatus\": " + String((MyBLE::packBasicInfo.MosfetStatus & 2) >> 1) + "}";
+    megStr = megStr + ", \"dischargeStatus\": " + String((MyBLE::packBasicInfo.MosfetStatus & 2) >> 1);
+    megStr = megStr + ", \"lipoVoltage\": " + String(M5.Axp.GetBatVoltage());
+    megStr = megStr + ", \"lipoCurrent\": " + String(M5.Axp.GetBatCurrent()) + "}";
 
     // MQTT publish
     // if (!mqttClient.connected())
@@ -713,7 +717,7 @@ void loop()
     {
       String logStr = "Going to deep sleep now and wake up in " + String(deepSleepTimeSec) + " seconds";
       LOGD(TAG, logStr);
-      // LOGLCD(TAG, logStr);
+      M5.Lcd.println(logStr);
       delay(2500);
       // esp_deep_sleep_start(); //link error
       // M5.Axp.DeepSleep(SLEEP_SEC(5)); // link error

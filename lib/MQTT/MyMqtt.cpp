@@ -42,7 +42,9 @@ void MyMqtt::callback(char *topic_, byte *payload, unsigned int length)
     {
         String megStr = "{\"batteryVoltage\": " + String(MyBLE::packBasicInfo.Volts) + ", \"batteryCurrent\": " + String(MyBLE::packBasicInfo.Amps) + ", \"batteryTemp1\": " + String(MyBLE::packBasicInfo.Temp1);
         // if (numberOfTemperature == 2)
-        megStr = megStr + ", \"batteryTemp2\": " + String(MyBLE::packBasicInfo.Temp2) + "}";
+        megStr = megStr + ", \"batteryTemp2\": " + String(MyBLE::packBasicInfo.Temp2);
+        megStr = megStr + ", \"lipoVoltage\": " + String(M5.Axp.GetBatVoltage());
+        megStr = megStr + ", \"lipoCurrent\": " + String(M5.Axp.GetBatCurrent()) + "}";
         if (!client->connected())
         {
             reConnect();
