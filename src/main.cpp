@@ -368,7 +368,7 @@ void updatePOI()
     else
     {
       M5.Lcd.println("Updating POI...");
-      
+
       MySdCard::listDir(SD, "/PersonalPOI", 0);
       MySdCard::removeDirR(SD, "/PersonalPOI");
       MySdCard::createDir(SD, "/PersonalPOI");
@@ -459,7 +459,8 @@ void setup()
     M5.Lcd.println("going to deep sleep because of reboot limit");
     delay(3000);
     PowerSaving::enable();
-    sleep(deepSleepTimeSec);
+    //sleep(deepSleepTimeSec);
+    M5.shutdown(deepSleepTimeSec);
   }
   else
   {
@@ -473,7 +474,7 @@ void setup()
   WiFi.mode(WIFI_STA);
   WiFi.hostname("JunBMS");
 
-  // static IP address setup
+  /* static IP address setup
   const IPAddress local_IP(192, 168, 0, 45);
   const IPAddress gateway(192, 168, 0, 1);
   const IPAddress DNS(192, 168, 0, 1);
@@ -482,6 +483,7 @@ void setup()
   {
     LOGD(TAG, "Failed to configure!");
   }
+  */
 
   // Add list of wifi networks
   for (int i = 0; i < configJson["wifi"].size(); i++)
@@ -688,11 +690,12 @@ void loop()
     String megStr = "{\"batteryVoltage\": " + String(MyBLE::packBasicInfo.Volts) + ", \"batteryCurrent\": " + String(MyBLE::packBasicInfo.Amps) + ", \"batteryTemp1\": " + String(MyBLE::packBasicInfo.Temp1);
     // if (numberOfTemperature == 2)
 
-    megStr = megStr + ", \"batteryTemp2\": " + String(MyBLE::packBasicInfo.Temp2);
-    megStr = megStr + ", \"chargeStatus\": " + String(MyBLE::packBasicInfo.MosfetStatus & 1);
-    megStr = megStr + ", \"dischargeStatus\": " + String((MyBLE::packBasicInfo.MosfetStatus & 2) >> 1);
-    megStr = megStr + ", \"lipoVoltage\": " + String(M5.Axp.GetBatVoltage());
-    megStr = megStr + ", \"lipoCurrent\": " + String(M5.Axp.GetBatCurrent()) + "}";
+    megStr += ", \"batteryTemp2\": " + String(MyBLE::packBasicInfo.Temp2);
+    megStr += ", \"batteryChargePercentage\": " + String(MyBLE::packBasicInfo.CapacityRemainPercent);
+    megStr += ", \"chargeStatus\": " + String(MyBLE::packBasicInfo.MosfetStatus & 1);
+    megStr += ", \"dischargeStatus\": " + String((MyBLE::packBasicInfo.MosfetStatus & 2) >> 1);
+    megStr += ", \"lipoVoltage\": " + String(M5.Axp.GetBatVoltage());
+    megStr += ", \"lipoCurrent\": " + String(M5.Axp.GetBatCurrent()) + "}";
 
     // MQTT publish
     // if (!mqttClient.connected())
@@ -721,8 +724,9 @@ void loop()
       delay(2500);
       // esp_deep_sleep_start(); //link error
       // M5.Axp.DeepSleep(SLEEP_SEC(5)); // link error
-      PowerSaving::enable();
-      sleep(deepSleepTimeSec);
+      //PowerSaving::enable();
+      //sleep(deepSleepTimeSec);
+      M5.shutdown(deepSleepTimeSec);
       // myDeepSleep(deepSleepTimeSec); // link error
       // LOGD(TAG, "This will never be printed");
     }
