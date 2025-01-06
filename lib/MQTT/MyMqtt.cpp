@@ -40,20 +40,40 @@ void MyMqtt::callback(char *topic_, byte *payload, unsigned int length)
 
     if (String(topic_).equals("cmnd/" + topic + "getState"))
     {
-        String megStr = "{\"batteryVoltage\": " + String(MyBLE::packBasicInfo.Volts) + ", \"batteryCurrent\": " + String(MyBLE::packBasicInfo.Amps) + ", \"batteryTemp1\": " + String(MyBLE::packBasicInfo.Temp1);
+        msgStr = "{\"batteryVoltage\": " + String(MyBLE::packBasicInfo.Volts) + ", \"batteryCurrent\": " + String(MyBLE::packBasicInfo.Amps) + ", \"batteryTemp1\": " + String(MyBLE::packBasicInfo.Temp1);
         // if (numberOfTemperature == 2)
-        megStr += ", \"batteryTemp2\": " + String(MyBLE::packBasicInfo.Temp2);
-        megStr += ", \"batteryChargePercentage\": " + String(MyBLE::packBasicInfo.CapacityRemainPercent);
-        megStr += ", \"chargeStatus\": " + String(MyBLE::packBasicInfo.MosfetStatus & 1);
-        megStr += ", \"dischargeStatus\": " + String((MyBLE::packBasicInfo.MosfetStatus & 2) >> 1);
-        megStr += ", \"lipoVoltage\": " + String(M5.Axp.GetBatVoltage());
-        megStr += ", \"lipoCurrent\": " + String(M5.Axp.GetBatCurrent()) + "}";
+        msgStr += ", \"batteryTemp2\": " + String(MyBLE::packBasicInfo.Temp2);
+        msgStr += ", \"batteryChargePercentage\": " + String(MyBLE::packBasicInfo.CapacityRemainPercent);
+        msgStr += ", \"chargeStatus\": " + String(MyBLE::packBasicInfo.MosfetStatus & 1);
+        msgStr += ", \"dischargeStatus\": " + String((MyBLE::packBasicInfo.MosfetStatus & 2) >> 1);
+        msgStr += ", \"lipoVoltage\": " + String(M5.Axp.GetBatVoltage());
+        msgStr += ", \"lipoCurrent\": " + String(M5.Axp.GetBatCurrent()) + "}";
         if (!client->connected())
         {
             reConnect();
         }
         LOGD(TAG, "responding to getState!");
-        client->publish(("stat/" + topic + "RESULT").c_str(), megStr.c_str());
+        client->publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
+        return;
+    }
+    if (String(topic_).equals("cmnd/" + topic + "shutdown"))
+    {
+
+        if (!client->connected())
+        {
+            reConnect();
+        }
+        LOGD(TAG, "responding to shutdown!");
+        client->publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
+        delay(2000);
+        int sec;
+        if (msgStr == "")
+            M5.shutdown();
+        else
+        {
+            sec = msgStr.toInt();
+            M5.shutdown(sec);
+        }
         return;
     }
     if ((String(topic_).equals("cmnd/" + topic + "charge")) || ((String(topic_).equals("cmnd/" + topic + "discharge"))))

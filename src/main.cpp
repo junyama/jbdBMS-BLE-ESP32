@@ -84,7 +84,7 @@ unsigned int wakeUpVoltageMv = 13399;
 unsigned int deepSleepVoltageMv = 13199; // mV
 unsigned int deepSleepTimeSec = 900;     // seconds
 unsigned int rebootCount = 0;
-unsigned int rebootLimit = 5;
+unsigned int rebootLimit = 10;
 
 // MQTT
 PubSubClient mqttClient(wifiClient);
@@ -256,7 +256,8 @@ String reset()
 {
   LOGD(TAG, "going to reset in 5 sec");
   delay(5000);
-  ESP.restart();
+  //ESP.restart();
+  M5.shutdown(10);
   return "OK";
 }
 
@@ -578,6 +579,7 @@ void setup()
   M5.Lcd.println("going to setup BLE");
   MyBLE::bleStartup();
   LOGD(TAG, "BLE setup done");
+  M5.Lcd.println("BLE setup done!");
 
   // initalize pack volt not to disconnect WiFi
   MyBLE::packBasicInfo.Volts = 15000;
@@ -606,10 +608,11 @@ void setup()
   // mqttClient.setCallback(callback); // Sets the message callback function.
   // MyMqtt::server = mqtt_server;
   MyMqtt::setup(&mqttClient, mqtt_server, mqtt_port, mqtt_topic);
+  M5.Lcd.println("MQTT setup done!");
 
   // Button setup
   PowerSaving::setup();
-  M5.Lcd.println("setup done!");
+  M5.Lcd.println("ALL setup done!");
   M5.Lcd.println("enabling power save.");
   delay(2000);
   PowerSaving::enable();
