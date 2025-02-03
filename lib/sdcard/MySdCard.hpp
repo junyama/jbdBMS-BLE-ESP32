@@ -1,12 +1,12 @@
 #ifndef MY_SDCARD_HPP
 #define MY_SDCARD_HPP
 
-#include "MyDebug.hpp"
 #include <Arduino.h>
+#include <FS.h>
+#include <SD.h>
+#include <SPI.h>
 
-#include "FS.h"
-#include "SD.h"
-#include "SPI.h"
+#include "MyDebug.hpp"
 
 class MySdCard
 {

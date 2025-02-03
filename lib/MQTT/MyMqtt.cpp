@@ -40,9 +40,12 @@ void MyMqtt::callback(char *topic_, byte *payload, unsigned int length)
 
     if (String(topic_).equals("cmnd/" + topic + "getState"))
     {
-        msgStr = "{\"batteryVoltage\": " + String(MyBLE::packBasicInfo.Volts) + ", \"batteryCurrent\": " + String(MyBLE::packBasicInfo.Amps) + ", \"batteryTemp1\": " + String(MyBLE::packBasicInfo.Temp1);
-        // if (numberOfTemperature == 2)
-        msgStr += ", \"batteryTemp2\": " + String(MyBLE::packBasicInfo.Temp2);
+        msgStr = "{\"deviceName\": " + MyBLE::deviceNameStr;
+        msgStr += ", \"batteryVoltage\": " + String(MyBLE::packBasicInfo.Volts);
+        msgStr += ", \"batteryCurrent\": " + String(MyBLE::packBasicInfo.Amps);
+        msgStr += ", \"batteryTemp1\": " + String(MyBLE::packBasicInfo.Temp1);
+        if (MyBLE::numberOfTemperature == 2)
+            msgStr += ", \"batteryTemp2\": " + String(MyBLE::packBasicInfo.Temp2);
         msgStr += ", \"batteryChargePercentage\": " + String(MyBLE::packBasicInfo.CapacityRemainPercent);
         msgStr += ", \"chargeStatus\": " + String(MyBLE::packBasicInfo.MosfetStatus & 1);
         msgStr += ", \"dischargeStatus\": " + String((MyBLE::packBasicInfo.MosfetStatus & 2) >> 1);

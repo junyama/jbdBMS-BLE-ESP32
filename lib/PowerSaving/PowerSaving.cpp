@@ -27,13 +27,14 @@ void PowerSaving::setup()
 void PowerSaving::enable()
 {
     LOGD(TAG, "enabling power save......");
-    //LOGLCD(TAG, "enabling power save......");
+    // LOGLCD(TAG, "enabling power save......");
     delay(2000);
     M5.Lcd.sleep();
     M5.Axp.SetLcdVoltage(0);
     PowerSaving::lcdState = 0;
     M5.Axp.SetLed(0);
-    //MyLOG::DISABLE_LOGLCD = true;
+    // M5.Axp.LightSleep(0); //linkerror
+    // MyLOG::DISABLE_LOGLCD = true;
 }
 
 void PowerSaving::disable()
@@ -42,7 +43,7 @@ void PowerSaving::disable()
     M5.Axp.SetLcdVoltage(3000);
     PowerSaving::lcdState = 1;
     M5.Axp.SetLed(1);
-    //MyLOG::DISABLE_LOGLCD = false;
+    // MyLOG::DISABLE_LOGLCD = false;
 }
 
 void PowerSaving::loop()
@@ -61,12 +62,12 @@ void PowerSaving::loop()
     }
     else if (M5.BtnB.wasReleased() || M5.BtnB.pressedFor(1000, 200))
     {
-        // MyLOG::DISABLE_LOGLCD = !MyLOG::DISABLE_LOGLCD;
+        M5.Lcd.clear(BLACK); // Clear the screen and set white to the background color.
+        M5.Lcd.setCursor(0, 0);
     }
     else if (M5.BtnC.wasReleased() || M5.BtnC.pressedFor(1000, 200))
     {
-        M5.Lcd.clear(BLACK); // Clear the screen and set white to the background color.
-        M5.Lcd.setCursor(0, 0);
+        M5.shutdown();
     }
     else if (M5.BtnB.wasReleasefor(700))
     {

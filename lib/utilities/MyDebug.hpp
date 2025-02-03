@@ -1,11 +1,12 @@
 #ifndef MY_DEBUG_HPP
 #define MY_DEBUG_HPP
 
+#include <M5Core2.h>
 #include <Arduino.h>
 #include <ESPDateTime.h>
-#include <M5Core2.h>
 
-//#include "MySdCard.hpp"
+//#include "MySdCard.hpp" //compile error
+#include <SD.h>
 
 namespace MyLOG
 {

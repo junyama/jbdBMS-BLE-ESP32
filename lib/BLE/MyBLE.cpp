@@ -70,7 +70,7 @@ bool MyBLE::newPacketReceived = false;
 packBasicInfoStruct MyBLE::packBasicInfo;
 packCellInfoStruct MyBLE::packCellInfo;
 // char *MyBLE::deviceName;
-String MyBLE::deviceNameStr = "not retrieved from the device yet";
+String MyBLE::deviceNameStr = "";
 int MyBLE::numberOfTemperature = 2;
 
 int16_t MyBLE::two_ints_into16(int highbyte, int lowbyte) // turns two bytes into a single long integer
@@ -197,6 +197,7 @@ bool MyBLE::processDeviceInfo(byte *data, unsigned int dataLen)
     chars[dataLen] = '\0';
     deviceNameStr = String(chars);
     LOGD(TAG, "deviceNameStr: " + deviceNameStr);
+    M5.Lcd.println(deviceNameStr);
     return true;
 }
 

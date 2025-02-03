@@ -11,10 +11,6 @@
 */
 
 #include <M5Core2.h>
-
-#include <WiFi.h>
-#include <WiFiMulti.h>
-
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiMulti.h>
@@ -52,7 +48,7 @@ static const String TAG = "main";
 
 // StaticJsonDocument<1024> configJson;
 JsonDocument configJson;
-DeserializationError error = deserializeJson(configJson, "{\"numberOfTemperature\": 1, \"sleepVoltageMv\": 12999, \"wakeUpVoltageMv\": 13899, \"deepSleepVoltageMv\": 11699, \"deepSleepTimeSec\": 900, \"wifi\": [{\"ssid\": \"Jun-Home-AP\", \"pass\": \"xxxxx\"}, {\"ssid\": \"Jun-FS020W\", \"pass\": \"xxxxx\"}], \"poiURL\": \"http://junichi2.ddns.net/\", \"ambient\": {\"channelId\": 50366, \"writeKey\": \"ccb476294fe16acd\", \"ambientSendIntervalBaseMs\": 60000}}");
+DeserializationError error = deserializeJson(configJson, "{\"numberOfTemperature\": 2, \"sleepVoltageMv\": 12999, \"wakeUpVoltageMv\": 13899, \"deepSleepVoltageMv\": 11699, \"deepSleepTimeSec\": 900, \"wifi\": [{\"ssid\": \"Jun-Home-AP\", \"pass\": \"xxxxx\"}, {\"ssid\": \"Jun-FS020W\", \"pass\": \"xxxxx\"}], \"poiURL\": \"http://junichi2.ddns.net/\", \"ambient\": {\"channelId\": 50366, \"writeKey\": \"ccb476294fe16acd\", \"ambientSendIntervalBaseMs\": 60000}}");
 
 // Wi-Fi client
 WiFiClient wifiClient;
@@ -77,9 +73,9 @@ unsigned int ambientSendIntervalMs = ambientSendIntervalBaseMs;
 Ambient ambient;
 
 // sleep control
-// unsigned int numberOfTemperature = 2; // numbe of temperature sensor
-float sleepVoltage = 13.399 * 1000;  // mV
-unsigned int sleepVoltageMv = 13199; // mV
+unsigned int numberOfTemperature = 2; // numbe of temperature sensor
+float sleepVoltage = 13.399 * 1000;   // mV
+unsigned int sleepVoltageMv = 13199;  // mV
 unsigned int wakeUpVoltageMv = 13399;
 unsigned int deepSleepVoltageMv = 13199; // mV
 unsigned int deepSleepTimeSec = 900;     // seconds
@@ -185,8 +181,8 @@ String getValues()
   jsonStr += "{\"batteryTemp1\": ";
   jsonStr += String(MyBLE::packBasicInfo.Temp1);
   jsonStr += ", \"batteryTemp2\": ";
-  // if (numberOfTemperature == 2)
-  jsonStr += String(MyBLE::packBasicInfo.Temp2);
+  if (numberOfTemperature == 2)
+    jsonStr += String(MyBLE::packBasicInfo.Temp2);
   // else
   // jsonStr += String(MyBLE::packBasicInfo.Temp1);
   jsonStr += ", \"batteryChargePercentage\": ";
@@ -252,11 +248,34 @@ String getDeviceName()
   return MyBLE::deviceNameStr;
 }
 
+void getDeviceNameLoop()
+{
+  String deviceNameStr;
+  // MyBLE::deviceNameStr = "";
+  // while (true)
+  for (int i = 0; i < 20; i++)
+  {
+    MyBLE::bleRequestData();
+    if (MyBLE::newPacketReceived == true)
+    {
+      deviceNameStr = MyBLE::deviceNameStr;
+      if (deviceNameStr)
+      {
+        LOGD(TAG, "deviceNameStr: " + deviceNameStr);
+        M5.Lcd.println(deviceNameStr);
+        return;
+      }
+      LOGD(TAG, "deviceNameStr: null");
+      delay(500);
+    }
+  }
+}
+
 String reset()
 {
   LOGD(TAG, "going to reset in 5 sec");
   delay(5000);
-  //ESP.restart();
+  // ESP.restart();
   M5.shutdown(10);
   return "OK";
 }
@@ -299,9 +318,12 @@ void loadConfig()
     LOGD(TAG, "Deserialization error.");
     return;
   }
-  int numberOfTemperature = configJson["numberOfTemperature"];
-  if (numberOfTemperature)
-    MyBLE::numberOfTemperature = numberOfTemperature;
+  int numberOfTemperature_ = configJson["numberOfTemperature"];
+  if (numberOfTemperature_)
+  {
+    numberOfTemperature = numberOfTemperature_;
+    MyBLE::numberOfTemperature = numberOfTemperature_;
+  }
   int channelId_ = configJson["ambient"]["channelId"];
   if (channelId_)
     channelId = channelId_;
@@ -310,6 +332,12 @@ void loadConfig()
   {
     writeKey = writeKey_;
     LOGD(TAG, "writeKey: " + writeKey);
+  }
+  int ambientSendIntervalBaseMs_ = configJson["ambient"]["ambientSendIntervalBaseMs"];
+  if (ambientSendIntervalBaseMs_)
+  {
+    ambientSendIntervalBaseMs = ambientSendIntervalBaseMs_;
+    ambientSendIntervalMs = ambientSendIntervalBaseMs;
   }
   int sleepVoltageMv_ = configJson["sleepVoltageMv"];
   if (sleepVoltageMv_)
@@ -394,7 +422,8 @@ void updatePOI()
           LOGD(TAG, "GET " + POIFileName + " failed, HTTP Response code: " + String(httpResponseCode));
         }
       }
-      M5.Lcd.println("POI update done");
+      M5.Lcd.println("POI update done!");
+      delay(5000);
     }
   }
   else
@@ -429,8 +458,10 @@ void myDeepSleep(int sec) // link error
 
 void setup()
 {
-  M5.begin();         // Init M5Core2.
-  Serial.begin(9600); // Standard hardware serial port
+  M5.begin(); // Init M5Core2.
+  Serial.begin(9600);
+
+  MySdCard::deleteFile(SD, "/log.txt");
 
   MyLcd::setup();
 
@@ -460,7 +491,7 @@ void setup()
     M5.Lcd.println("going to deep sleep because of reboot limit");
     delay(3000);
     PowerSaving::enable();
-    //sleep(deepSleepTimeSec);
+    // sleep(deepSleepTimeSec);
     M5.shutdown(deepSleepTimeSec);
   }
   else
@@ -571,24 +602,12 @@ void setup()
 
   // init ambient channelID and key
   ambient.begin(channelId, writeKey.c_str(), &wifiClient);
-  LOGD(TAG, "ambient setup done");
-
-  // saveConfig();
-  //  setup BLE
-  LOGD(TAG, "going to setup BLE");
-  M5.Lcd.println("going to setup BLE");
-  MyBLE::bleStartup();
-  LOGD(TAG, "BLE setup done");
-  M5.Lcd.println("BLE setup done!");
-
   // initalize pack volt not to disconnect WiFi
   MyBLE::packBasicInfo.Volts = 15000;
   // ambientlLastSent = millis() + 100000;
   ambientlLastSent = 0;
   LOGD(TAG, "ambientlLastSent initial value: " + String(ambientlLastSent));
-
-  // esp_sleep_enable_timer_wakeup(deepSleepTimeSec * uS_TO_S_FACTOR);
-  // LOGD(TAG, "Setup ESP32 to sleep for " + String(deepSleepTimeSec) + " Seconds");
+  LOGD(TAG, "ambient setup done");
 
   // MQTT setup
   String mqttServerConf = configJson["MQTT"]["server"];
@@ -603,12 +622,22 @@ void setup()
   if (mqttTopicConf != "null")
     mqtt_topic = mqttTopicConf;
   LOGD(TAG, "MQTT Topic: " + mqtt_topic);
-  // mqttClient.setServer(mqtt_server.c_str(), mqtt_port); // Sets the server details.
-  // mqttClient.setCallback(MyMqtt::callback);  // Sets the message callback function.
-  // mqttClient.setCallback(callback); // Sets the message callback function.
-  // MyMqtt::server = mqtt_server;
   MyMqtt::setup(&mqttClient, mqtt_server, mqtt_port, mqtt_topic);
   M5.Lcd.println("MQTT setup done!");
+
+  //  setup BLE
+  LOGD(TAG, "going to setup BLE");
+  M5.Lcd.println("going to setup BLE");
+  MyBLE::bleStartup();
+
+  LOGD(TAG, "getting device name....");
+  getDeviceNameLoop();
+
+  LOGD(TAG, "BLE setup done");
+  M5.Lcd.println("BLE setup done!");
+
+  // esp_sleep_enable_timer_wakeup(deepSleepTimeSec * uS_TO_S_FACTOR);
+  // LOGD(TAG, "Setup ESP32 to sleep for " + String(deepSleepTimeSec) + " Seconds");
 
   // Button setup
   PowerSaving::setup();
@@ -681,19 +710,20 @@ void loop()
     ambient.set(1, MyBLE::packBasicInfo.Volts / 1000.0f);
     ambient.set(2, MyBLE::packBasicInfo.Amps / 1000.0f);
     ambient.set(3, MyBLE::packCellInfo.CellDiff / 1.0f);
-    // if (numberOfTemperature == 2)
-    ambient.set(4, (MyBLE::packBasicInfo.Temp1 + MyBLE::packBasicInfo.Temp2) / 2 / 10.0f);
-    // else
-    // ambient.set(4, MyBLE::packBasicInfo.Temp1 / 10.0f);
+    ambient.set(4, MyBLE::packBasicInfo.Temp1 / 10.0f);
+    if (numberOfTemperature == 2)
+      ambient.set(4, (MyBLE::packBasicInfo.Temp1 + MyBLE::packBasicInfo.Temp2) / 2 / 10.0f);
     ambient.send();
     ambientlLastSent = millis();
 
     MyLcd::showBatteryInfo(MyBLE::packBasicInfo.Volts / 1000.0f, MyBLE::packBasicInfo.Amps / 1000.0f, MyBLE::packCellInfo.CellDiff / 1.0f, MyBLE::packBasicInfo.Temp1 / 10.0f, MyBLE::packBasicInfo.Temp2 / 10.0f, MyBLE::packBasicInfo.CapacityRemainPercent);
 
-    String megStr = "{\"batteryVoltage\": " + String(MyBLE::packBasicInfo.Volts) + ", \"batteryCurrent\": " + String(MyBLE::packBasicInfo.Amps) + ", \"batteryTemp1\": " + String(MyBLE::packBasicInfo.Temp1);
-    // if (numberOfTemperature == 2)
-
-    megStr += ", \"batteryTemp2\": " + String(MyBLE::packBasicInfo.Temp2);
+    String megStr = "{\"deviceName\": " + MyBLE::deviceNameStr;
+    megStr += ", \"batteryVoltage\": " + String(MyBLE::packBasicInfo.Volts);
+    megStr += ", \"batteryCurrent\": " + String(MyBLE::packBasicInfo.Amps);
+    megStr += ", \"batteryTemp1\": " + String(MyBLE::packBasicInfo.Temp1);
+    if (numberOfTemperature == 2)
+      megStr += ", \"batteryTemp2\": " + String(MyBLE::packBasicInfo.Temp2);
     megStr += ", \"batteryChargePercentage\": " + String(MyBLE::packBasicInfo.CapacityRemainPercent);
     megStr += ", \"chargeStatus\": " + String(MyBLE::packBasicInfo.MosfetStatus & 1);
     megStr += ", \"dischargeStatus\": " + String((MyBLE::packBasicInfo.MosfetStatus & 2) >> 1);
@@ -727,8 +757,8 @@ void loop()
       delay(2500);
       // esp_deep_sleep_start(); //link error
       // M5.Axp.DeepSleep(SLEEP_SEC(5)); // link error
-      //PowerSaving::enable();
-      //sleep(deepSleepTimeSec);
+      // PowerSaving::enable();
+      // sleep(deepSleepTimeSec);
       M5.shutdown(deepSleepTimeSec);
       // myDeepSleep(deepSleepTimeSec); // link error
       // LOGD(TAG, "This will never be printed");

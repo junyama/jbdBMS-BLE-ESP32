@@ -14,17 +14,29 @@ void MyLOG::LOGD(String tag, String text)
         String logStr = "[" + DateTime.toString() + "] ";
         logStr += tag + ": ";
         logStr += text;
-        //Serial.print("[" + DateTime.toString() + "] ");
-        //Serial.print(tag + ": ");
         Serial.println(logStr);
-        //if (SAVE_LOGD) MySdCard::appendFile(SD, "log.text", logStr.c_str());
+        // if (SAVE_LOGD) MySdCard::appendFile(SD, "log.text", logStr.c_str()); //compile error
+        if (SAVE_LOGD)
+        {
+            File file = SD.open("/log.txt", FILE_APPEND);
+            if (!file)
+            {
+                Serial.println("Failed to open file for appending");
+                return;
+            }
+            if (!file.println(logStr.c_str()))
+            {
+                Serial.println("Append failed");
+            }
+            file.close();
+        }
     }
 }
 void MyLOG::LOGLCD(String tag, String text)
 {
     if (!DISABLE_LOGLCD)
     {
-        //M5.Lcd.print("[" + DateTime.toString() + "] ");
+        // M5.Lcd.print("[" + DateTime.toString() + "] ");
         M5.Lcd.print(tag + ": ");
         M5.Lcd.println(text);
     }
