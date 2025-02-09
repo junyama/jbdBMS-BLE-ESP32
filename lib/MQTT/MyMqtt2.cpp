@@ -1,30 +1,30 @@
-#ifndef MY_MQTT_CPP
-#define MY_MQTT_CPP
+#ifndef MY_MQTT2_CPP
+#define MY_MQTT2_CPP
 
-#include "MyMqtt.hpp"
+#include "MyMqtt2.hpp"
 
 using namespace MyLOG;
 
-const String MyMqtt::TAG = "MyMqtt";
-PubSubClient *MyMqtt::client;
-String MyMqtt::topic = "junichi/M5Core2";
-String MyMqtt::server = "broker.emqx.io";
-
-void MyMqtt::setup(PubSubClient *mqttClient, String mqttServer, int mqttPort, String mqttTopic)
+MyMqtt2::MyMqtt2(MyBLE2 *myBLE_)
 {
-    LOGD(TAG, "server: " + server);
-    client = mqttClient;
-    topic = mqttTopic;
-    server = mqttServer;
-    client->setServer(server.c_str(), mqttPort);
-    // client->setServer(mqttServer.c_str(), mqttPort); //does not work
-    client->setCallback(callback);
+    myBLE = myBLE_;
 }
 
-void MyMqtt::callback(char *topic_, byte *payload, unsigned int length)
+void MyMqtt2::setup(String mqttServer, int mqttPort, String mqttTopic)
 {
-    int chargeStatus = MyBLE::packBasicInfo.MosfetStatus & 1;
-    int dischargeStatus = (MyBLE::packBasicInfo.MosfetStatus & 2) >> 1;
+    LOGD(TAG, "server: " + server);
+    topic = mqttTopic;
+    server = mqttServer;
+    client.setServer(server.c_str(), mqttPort);
+    // client.setServer(mqttServer.c_str(), mqttPort); //does not work
+    client.setCallback([this](char *topic_, byte *payload, unsigned int length)
+                       { callback(topic_, payload, length); }); 
+}
+
+void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
+{
+    int chargeStatus = myBLE->packBasicInfo.MosfetStatus & 1;
+    int dischargeStatus = (myBLE->packBasicInfo.MosfetStatus & 2) >> 1;
 
     String msgStr = "";
     for (int i = 0; i < length; i++)
@@ -40,34 +40,34 @@ void MyMqtt::callback(char *topic_, byte *payload, unsigned int length)
 
     if (String(topic_).equals("cmnd/" + topic + "getState"))
     {
-        msgStr = "{\"deviceName\": " + MyBLE::deviceNameStr;
-        msgStr += ", \"batteryVoltage\": " + String(MyBLE::packBasicInfo.Volts);
-        msgStr += ", \"batteryCurrent\": " + String(MyBLE::packBasicInfo.Amps);
-        msgStr += ", \"batteryTemp1\": " + String(MyBLE::packBasicInfo.Temp1);
-        if (MyBLE::numberOfTemperature == 2)
-            msgStr += ", \"batteryTemp2\": " + String(MyBLE::packBasicInfo.Temp2);
-        msgStr += ", \"batteryChargePercentage\": " + String(MyBLE::packBasicInfo.CapacityRemainPercent);
-        msgStr += ", \"chargeStatus\": " + String(MyBLE::packBasicInfo.MosfetStatus & 1);
-        msgStr += ", \"dischargeStatus\": " + String((MyBLE::packBasicInfo.MosfetStatus & 2) >> 1);
+        msgStr = "{\"deviceName\": " + myBLE->deviceNameStr;
+        msgStr += ", \"batteryVoltage\": " + String(myBLE->packBasicInfo.Volts);
+        msgStr += ", \"batteryCurrent\": " + String(myBLE->packBasicInfo.Amps);
+        msgStr += ", \"batteryTemp1\": " + String(myBLE->packBasicInfo.Temp1);
+        if (myBLE->numberOfTemperature == 2)
+            msgStr += ", \"batteryTemp2\": " + String(myBLE->packBasicInfo.Temp2);
+        msgStr += ", \"batteryChargePercentage\": " + String(myBLE->packBasicInfo.CapacityRemainPercent);
+        msgStr += ", \"chargeStatus\": " + String(myBLE->packBasicInfo.MosfetStatus & 1);
+        msgStr += ", \"dischargeStatus\": " + String((myBLE->packBasicInfo.MosfetStatus & 2) >> 1);
         msgStr += ", \"lipoVoltage\": " + String(M5.Axp.GetBatVoltage());
         msgStr += ", \"lipoCurrent\": " + String(M5.Axp.GetBatCurrent()) + "}";
-        if (!client->connected())
+        if (!client.connected())
         {
             reConnect();
         }
         LOGD(TAG, "responding to getState!");
-        client->publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
+        client.publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
         return;
     }
     if (String(topic_).equals("cmnd/" + topic + "shutdown"))
     {
 
-        if (!client->connected())
+        if (!client.connected())
         {
             reConnect();
         }
         LOGD(TAG, "responding to shutdown!");
-        client->publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
+        client.publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
         delay(2000);
         int sec;
         if (msgStr == "")
@@ -93,19 +93,19 @@ void MyMqtt::callback(char *topic_, byte *payload, unsigned int length)
             }
             else if (msgStr.equals("0"))
             {
-                MyBLE::mosfetCtrl(0, dischargeStatus);
+                myBLE->mosfetCtrl(0, dischargeStatus);
                 chargeStatus = 0;
                 msgStr = "OFF";
             }
             else if (msgStr.equals("1"))
             {
-                MyBLE::mosfetCtrl(1, dischargeStatus);
+                myBLE->mosfetCtrl(1, dischargeStatus);
                 chargeStatus = 1;
                 msgStr = "ON";
             }
             else if (msgStr.equals("toggle"))
             {
-                MyBLE::mosfetCtrl((chargeStatus ^ 1), dischargeStatus);
+                myBLE->mosfetCtrl((chargeStatus ^ 1), dischargeStatus);
                 chargeStatus = chargeStatus ^ 1;
                 msgStr = "TOGGLE";
             }
@@ -113,12 +113,12 @@ void MyMqtt::callback(char *topic_, byte *payload, unsigned int length)
             {
                 msgStr = "INVALID";
             }
-            if (!client->connected())
+            if (!client.connected())
             {
                 reConnect();
             }
             LOGD(TAG, "responding to charge!");
-            client->publish(("stat/" + topic + "CHARGE").c_str(), msgStr.c_str());
+            client.publish(("stat/" + topic + "CHARGE").c_str(), msgStr.c_str());
         }
         else if (String(topic_).equals("cmnd/" + topic + "discharge"))
         {
@@ -132,19 +132,19 @@ void MyMqtt::callback(char *topic_, byte *payload, unsigned int length)
             }
             else if (msgStr.equals("0"))
             {
-                MyBLE::mosfetCtrl(chargeStatus, 0);
+                myBLE->mosfetCtrl(chargeStatus, 0);
                 dischargeStatus = 0;
                 msgStr = "OFF";
             }
             else if (msgStr.equals("1"))
             {
-                MyBLE::mosfetCtrl(chargeStatus, 1);
+                myBLE->mosfetCtrl(chargeStatus, 1);
                 dischargeStatus = 1;
                 msgStr = "ON";
             }
             else if (msgStr.equals("toggle"))
             {
-                MyBLE::mosfetCtrl(chargeStatus, (dischargeStatus ^ 1));
+                myBLE->mosfetCtrl(chargeStatus, (dischargeStatus ^ 1));
                 dischargeStatus = dischargeStatus ^ 1;
                 msgStr = "TOGGLE";
             }
@@ -152,15 +152,15 @@ void MyMqtt::callback(char *topic_, byte *payload, unsigned int length)
             {
                 msgStr = "INVALID";
             }
-            if (!client->connected())
+            if (!client.connected())
             {
                 reConnect();
             }
             LOGD(TAG, "responding to discharge!");
-            client->publish(("stat/" + topic + "DISCARGE").c_str(), msgStr.c_str());
+            client.publish(("stat/" + topic + "DISCARGE").c_str(), msgStr.c_str());
         }
         msgStr = "{\"chargeStatus\": " + String(chargeStatus) + ", \"didchargeStatus\": " + String(dischargeStatus) + "}";
-        client->publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
+        client.publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
         return;
     }
     JsonDocument megJson;
@@ -173,34 +173,34 @@ void MyMqtt::callback(char *topic_, byte *payload, unsigned int length)
     // msgJson process here
 }
 
-int MyMqtt::reConnect()
+int MyMqtt2::reConnect()
 {
     LOGD(TAG, "reConnect() called");
     int i = 0;
-    while (!client->connected())
+    while (!client.connected())
     {
         LOGD(TAG, "Attempting MQTT connection...");
         // Create a random client ID.
         String clientId = "M5Stack-";
         clientId += String(random(0xffff), HEX);
         // Attempt to connect.
-        bool isConnected = client->connect(clientId.c_str());
+        bool isConnected = client.connect(clientId.c_str());
         // if (client.connect(clientId.c_str()))
         if (isConnected)
         {
             LOGD(TAG, "Connected.");
             // Once connected, publish an announcement to the topic.
             String topicStr = "stat/" + topic + "STATE";
-            client->publish(topicStr.c_str(), "MQTT reconnected");
+            client.publish(topicStr.c_str(), "MQTT reconnected");
             // ... and resubscribe.
             topicStr = "cmnd/" + topic + "#";
-            client->subscribe(topicStr.c_str());
+            client.subscribe(topicStr.c_str());
             return 0;
         }
         else
         {
             String logStr = "failed, rc = ";
-            logStr = logStr + (client->state());
+            logStr = logStr + (client.state());
             logStr = " try again in 5 seconds";
             LOGLCD(TAG, logStr);
             delay(5000);
@@ -215,24 +215,24 @@ int MyMqtt::reConnect()
     return 0;
 }
 
-void MyMqtt::subscribe(String topic)
+void MyMqtt2::subscribe(String topic)
 {
-    client->subscribe(topic.c_str());
+    client.subscribe(topic.c_str());
 }
 
-void MyMqtt::publish(String topic, String message)
+void MyMqtt2::publish(String topic, String message)
 {
-    client->publish(topic.c_str(), message.c_str());
+    client.publish(topic.c_str(), message.c_str());
 }
 
-bool MyMqtt::connected()
+bool MyMqtt2::connected()
 {
-    return (client->connected());
+    return (client.connected());
 }
 
-void MyMqtt::loop()
+void MyMqtt2::loop()
 {
-    client->loop();
+    client.loop();
 }
 
-#endif /* MY_MQTT_CPP */
+#endif /* MY_MQTT2_CPP */

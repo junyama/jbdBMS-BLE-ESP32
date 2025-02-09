@@ -23,7 +23,7 @@ public:
 	static String server;
 	static void setup(PubSubClient *mqqtClient, String server, int port, String mqttTtopic);
 	static void callback(char *topic, byte *payload, unsigned int length);
-	static void reConnect();
+	static int reConnect();
 	static void subscribe(String topic);
 	static void publish(String topic, String message);
 	static bool connected();
