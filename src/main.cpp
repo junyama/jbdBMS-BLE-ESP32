@@ -23,7 +23,7 @@
 #include <HTTPClient.h>
 #include <PubSubClient.h>
 
-//#include "MyBLE.hpp"
+// #include "MyBLE.hpp"
 #include "MyBLE2.hpp"
 
 #include "MyDebug.hpp"
@@ -95,10 +95,12 @@ unsigned int rebootLimit = 10;
 MyBLE2 myBLE;
 
 // MQTT
+/*
 PubSubClient mqttClient(wifiClient);
 String mqtt_server = "broker.emqx.io";  // default
 int mqtt_port = 1883;                   // default
 String mqtt_topic = "junichi/M5Core2/"; // default
+*/
 MyMqtt2 mqttClient2(&myBLE);
 
 // LCD
@@ -106,7 +108,6 @@ MyLcd2 myLcd;
 
 // Power saving
 PowerSaving2 powerSaving;
-
 
 // local functions definitions
 void setupDateTime()
@@ -511,8 +512,10 @@ void setup()
     rebootCount = 0;
     configJson["rebootCount"] = 0;
     saveConfig();
-    LOGD(TAG, "going to deep sleep because of reboot limit.....");
-    M5.Lcd.println("going to deep sleep because of reboot limit");
+    String logStr = "going to deep sleep because exceeding reboot limit (" +  String(rebootLimit) + "). Wake up in " + String(deepSleepTimeSec) + "sec";
+    LOGD(TAG, logStr);
+    myLcd.println(logStr);
+    mqttClient2.publish("stat/" + mqttClient2.topic + "STATE", logStr);
     delay(3000);
     // PowerSaving::enable();
     powerSaving.enable();
@@ -640,6 +643,7 @@ void setup()
   // LOGD(TAG, "ambient setup done");
 
   // MQTT setup
+  /*
   String mqttServerConf = configJson["MQTT"]["server"];
   if (mqttServerConf != "null")
     mqtt_server = mqttServerConf;
@@ -653,8 +657,9 @@ void setup()
     mqtt_topic = mqttTopicConf;
   LOGD(TAG, "MQTT Topic: " + mqtt_topic);
   // MyMqtt::setup(&mqttClient, mqtt_server, mqtt_port, mqtt_topic);
+  */
 
-  mqttClient2.setup(mqtt_server, mqtt_port, mqtt_topic);
+  mqttClient2.setup(configJson);
 
   M5.Lcd.println("MQTT setup done!");
 
@@ -712,6 +717,8 @@ void loop()
     String logStr = "disconnecting WiFi, batteryVoltage: " + String(myBLE.packBasicInfo.Volts) + " <= " + String(sleepVoltageMv);
     LOGD(TAG, logStr);
     // LOGLCD(TAG, logStr);
+    mqttClient2.publish("stat/" + mqttClient2.topic + "STATE", logStr);
+    delay(2000);
     WiFi.disconnect(true);
     delay(3000);
     // PowerSaving::enable();
@@ -738,7 +745,11 @@ void loop()
       if (!mqttClient2.connected())
       {
         if (mqttClient2.reConnect())
+        {
+          mqttClient2.publish("stat/" + mqttClient2.topic + "STATE", "resetting system because of reconnecting MQTT server failed.");
+          delay(2000);
           reset();
+        }
       }
       mqttClient2.loop();
     }
@@ -787,17 +798,7 @@ void loop()
     // MyLcd::showBatteryInfo(myBLE.packBasicInfo.Volts / 1000.0f, myBLE.packBasicInfo.Amps / 1000.0f, myBLE.packCellInfo.CellDiff / 1.0f, myBLE.packBasicInfo.Temp1 / 10.0f, myBLE.packBasicInfo.Temp2 / 10.0f, myBLE.packBasicInfo.CapacityRemainPercent);
     myLcd.showBatteryInfo(myBLE.packBasicInfo.Volts / 1000.0f, myBLE.packBasicInfo.Amps / 1000.0f, myBLE.packCellInfo.CellDiff / 1.0f, myBLE.packBasicInfo.Temp1 / 10.0f, myBLE.packBasicInfo.Temp2 / 10.0f, myBLE.packBasicInfo.CapacityRemainPercent);
 
-    String megStr = "{\"deviceName\": " + myBLE.deviceNameStr;
-    megStr += ", \"batteryVoltage\": " + String(myBLE.packBasicInfo.Volts);
-    megStr += ", \"batteryCurrent\": " + String(myBLE.packBasicInfo.Amps);
-    megStr += ", \"batteryTemp1\": " + String(myBLE.packBasicInfo.Temp1);
-    if (numberOfTemperature == 2)
-      megStr += ", \"batteryTemp2\": " + String(myBLE.packBasicInfo.Temp2);
-    megStr += ", \"batteryChargePercentage\": " + String(myBLE.packBasicInfo.CapacityRemainPercent);
-    megStr += ", \"chargeStatus\": " + String(myBLE.packBasicInfo.MosfetStatus & 1);
-    megStr += ", \"dischargeStatus\": " + String((myBLE.packBasicInfo.MosfetStatus & 2) >> 1);
-    megStr += ", \"lipoVoltage\": " + String(M5.Axp.GetBatVoltage());
-    megStr += ", \"lipoCurrent\": " + String(M5.Axp.GetBatCurrent()) + "}";
+    String msgStr = mqttClient2.getState();
 
     // MQTT publish
     /*
@@ -807,22 +808,26 @@ void loop()
         reset();
     }
     // mqttClient.loop();
-    MyMqtt::publish("stat/" + mqtt_topic + "STATE", megStr);
+    MyMqtt::publish("stat/" + mqtt_topic + "STATE", msgStr);
     */
 
     if (!mqttClient2.connected())
     {
       if (mqttClient2.reConnect())
+      {
+        mqttClient2.publish("stat/" + mqttClient2.topic + "STATE", "resetting system because of reconnecting MQTT server failed.");
+        delay(2000);
         reset();
+      }
     }
     // mqttClient.loop();
-    mqttClient2.publish("stat/" + mqtt_topic + "STATE", megStr);
+    mqttClient2.publish("stat/" + mqttClient2.topic + "STATE", msgStr);
 
-    // String logStr = "ambient sent, channelId: " + String(channelId) + ", message: " + megStr;
+    // String logStr = "ambient sent, channelId: " + String(channelId) + ", message: " + msgStr;
     // LOGD(TAG, logStr);
     //  LOGLCD(TAG, logStr);
-    String logStr = "MQTT publised, topic: stat/" + mqtt_topic + "STATE";
-    logStr = logStr + ", message: " + megStr;
+    String logStr = "MQTT publised, topic: stat/" + mqttClient2.topic + "STATE";
+    logStr = logStr + ", message: " + msgStr;
     LOGD(TAG, logStr);
     // LOGLCD(TAG, logStr);
 
@@ -830,7 +835,8 @@ void loop()
     {
       String logStr = "Going to deep sleep now and wake up in " + String(deepSleepTimeSec) + " seconds";
       LOGD(TAG, logStr);
-      M5.Lcd.println(logStr);
+      myLcd.println(logStr);
+      mqttClient2.publish("stat/" + mqttClient2.topic + "STATE", logStr);
       delay(2500);
       // esp_deep_sleep_start(); //link error
       // M5.Axp.DeepSleep(SLEEP_SEC(5)); // link error

@@ -5,20 +5,56 @@
 
 using namespace MyLOG;
 
+String MyMqtt2::getState()
+{
+    String msgStr = "{\"deviceName\": " + myBLE->deviceNameStr;
+    msgStr += ", \"batteryVoltage\": " + String(myBLE->packBasicInfo.Volts);
+    msgStr += ", \"batteryCurrent\": " + String(myBLE->packBasicInfo.Amps);
+    msgStr += ", \"batteryTemp1\": " + String(myBLE->packBasicInfo.Temp1);
+    if (configJson["numberOfTemperature"] == 2)
+        msgStr += ", \"batteryTemp2\": " + String(myBLE->packBasicInfo.Temp2);
+    msgStr += ", \"batteryChargePercentage\": " + String(myBLE->packBasicInfo.CapacityRemainPercent);
+    msgStr += ", \"chargeStatus\": " + String(myBLE->packBasicInfo.MosfetStatus & 1);
+    msgStr += ", \"dischargeStatus\": " + String((myBLE->packBasicInfo.MosfetStatus & 2) >> 1);
+    msgStr += ", \"lipoVoltage\": " + String(M5.Axp.GetBatVoltage());
+    msgStr += ", \"lipoCurrent\": " + String(M5.Axp.GetBatCurrent());
+    String sleepVoltage = configJson["sleepVoltage"];
+    msgStr += ", \"sleepVoltage\": " + sleepVoltage;
+    String wakeUpVoltageMv = configJson["wakeUpVoltageMv"];
+    msgStr += ", \"wakeUpVoltageMv\": " + wakeUpVoltageMv;
+    String deepSleepVoltageMv = configJson["deepSleepVoltageMv"];
+    msgStr += ", \"deepSleepVoltageMv\": " + deepSleepVoltageMv;
+    String deepSleepTimeSec = configJson["deepSleepTimeSec"];
+    msgStr += ", \"deepSleepTimeSec\": " + deepSleepTimeSec;
+    String ambientSendIntervalBaseMs = configJson["ambientSendIntervalBaseMs"];
+    msgStr += ", \"ambientSendIntervalBaseMs\": " + ambientSendIntervalBaseMs;
+    msgStr += "}";
+    return msgStr;
+}
+
 MyMqtt2::MyMqtt2(MyBLE2 *myBLE_)
 {
     myBLE = myBLE_;
 }
 
-void MyMqtt2::setup(String mqttServer, int mqttPort, String mqttTopic)
+void MyMqtt2::setup(JsonDocument configJson_)
 {
-    LOGD(TAG, "server: " + server);
-    topic = mqttTopic;
-    server = mqttServer;
-    client.setServer(server.c_str(), mqttPort);
-    // client.setServer(mqttServer.c_str(), mqttPort); //does not work
+    configJson = configJson_;
+    String mqttServerConf = configJson["MQTT"]["server"];
+    if (mqttServerConf != "null")
+        server = mqttServerConf;
+    LOGD(TAG, "MQTT Server: " + server);
+    int mqqtPortConf = configJson["MQTT"]["port"];
+    if (mqqtPortConf)
+        port = mqqtPortConf;
+    LOGD(TAG, "MQTT Server port: " + port);
+    String mqttTopicConf = configJson["MQTT"]["topic"];
+    if (mqttTopicConf != "null")
+        topic = mqttTopicConf;
+    LOGD(TAG, "MQTT Topic: " + topic);
+    client.setServer(server.c_str(), port);
     client.setCallback([this](char *topic_, byte *payload, unsigned int length)
-                       { callback(topic_, payload, length); }); 
+                       { callback(topic_, payload, length); });
 }
 
 void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
@@ -40,23 +76,12 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
 
     if (String(topic_).equals("cmnd/" + topic + "getState"))
     {
-        msgStr = "{\"deviceName\": " + myBLE->deviceNameStr;
-        msgStr += ", \"batteryVoltage\": " + String(myBLE->packBasicInfo.Volts);
-        msgStr += ", \"batteryCurrent\": " + String(myBLE->packBasicInfo.Amps);
-        msgStr += ", \"batteryTemp1\": " + String(myBLE->packBasicInfo.Temp1);
-        if (myBLE->numberOfTemperature == 2)
-            msgStr += ", \"batteryTemp2\": " + String(myBLE->packBasicInfo.Temp2);
-        msgStr += ", \"batteryChargePercentage\": " + String(myBLE->packBasicInfo.CapacityRemainPercent);
-        msgStr += ", \"chargeStatus\": " + String(myBLE->packBasicInfo.MosfetStatus & 1);
-        msgStr += ", \"dischargeStatus\": " + String((myBLE->packBasicInfo.MosfetStatus & 2) >> 1);
-        msgStr += ", \"lipoVoltage\": " + String(M5.Axp.GetBatVoltage());
-        msgStr += ", \"lipoCurrent\": " + String(M5.Axp.GetBatCurrent()) + "}";
         if (!client.connected())
         {
             reConnect();
         }
         LOGD(TAG, "responding to getState!");
-        client.publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
+        client.publish(("stat/" + topic + "RESULT").c_str(), getState().c_str());
         return;
     }
     if (String(topic_).equals("cmnd/" + topic + "shutdown"))

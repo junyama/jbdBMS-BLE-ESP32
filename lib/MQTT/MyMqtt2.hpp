@@ -17,21 +17,23 @@ class MyMqtt2
 private:
     const String TAG = "MyMqtt2";
     String server = "broker.emqx.io";
-    String topic;
-
+    int port = 1883;
+    JsonDocument configJson;
     MyBLE2 *myBLE;
 
 public:
     PubSubClient client;
+    String topic = "junichi/M5Core2/";
 
     MyMqtt2(MyBLE2 *myBLE_);
-    void setup(String server, int port, String mqttTtopic);
+    void setup(JsonDocument configJson);
     void callback(char *topic, byte *payload, unsigned int length);
     int reConnect();
     void subscribe(String topic);
     void publish(String topic, String message);
     bool connected();
     void loop();
+    String getState();
 };
 
 #endif /* MY_MQTT2_HPP */

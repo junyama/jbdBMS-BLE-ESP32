@@ -14,9 +14,11 @@ class MyLcd2
 {
 private:
 	 const String TAG = "MyLcd";
+	 bool isBatteryInfoShown = false;
 
 public:
 	 void setup();
+	 void println(String text);
 	 void showBatteryInfo(float packVoltage, float current, float cellDiff, float temparature1, float temparature2, int capacityRemain);
 };
 

@@ -11,6 +11,17 @@ void MyLcd2::setup()
     M5.Lcd.setTextSize(2);
 }
 
+void MyLcd2::println(String text)
+{
+    if (isBatteryInfoShown)
+    {
+        M5.Lcd.clear();
+        M5.Lcd.setTextSize(1);
+        isBatteryInfoShown = false;
+    }
+    M5.Lcd.println(text);
+}
+
 void MyLcd2::showBatteryInfo(float volt, float current, float cellDiff, float temparature1, float temparature2, int capacityRemain)
 {
     LOGD(TAG, "show volt: " + String(volt));
@@ -19,9 +30,9 @@ void MyLcd2::showBatteryInfo(float volt, float current, float cellDiff, float te
     char str[16];
 
     M5.Lcd.clear();
-    //M5.Lcd.drawRect(1, 1, 319, 239, YELLOW);
-    // M5.Lcd.setTextDatum(2);
-    //M5.Axp.SetLcdVoltage(3000);
+    // M5.Lcd.drawRect(1, 1, 319, 239, YELLOW);
+    //  M5.Lcd.setTextDatum(2);
+    // M5.Axp.SetLcdVoltage(3000);
     M5.Lcd.setTextSize(1);
     M5.Lcd.setCursor(1, 10, 7);
     M5.Lcd.setTextColor(GREEN, BLACK);
@@ -64,6 +75,7 @@ void MyLcd2::showBatteryInfo(float volt, float current, float cellDiff, float te
     M5.Lcd.print(str);
     M5.Lcd.setTextFont(4);
     M5.Lcd.print("A");
+    isBatteryInfoShown = true;
 }
 
 #endif /* MY_MQTT2_CPP */
