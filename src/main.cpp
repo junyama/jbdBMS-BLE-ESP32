@@ -27,8 +27,10 @@
 #include "MyDebug.hpp"
 #include "MySdCard.hpp"
 #include "MyMqtt.hpp"
-#include "PowerSaving.hpp"
-#include "MyLcd.hpp"
+// #include "PowerSaving.hpp"
+#include "PowerSaving2.hpp"
+//#include "MyLcd.hpp"
+#include "MyLcd2.hpp"
 
 using namespace MyLOG;
 
@@ -87,6 +89,12 @@ PubSubClient mqttClient(wifiClient);
 String mqtt_server = "broker.emqx.io";  // default
 int mqtt_port = 1883;                   // default
 String mqtt_topic = "junichi/M5Core2/"; // default
+
+// LCD
+MyLcd2 myLcd;
+
+// Power saving
+PowerSaving2 powerSaving;
 
 // local functions definitions
 
@@ -463,7 +471,8 @@ void setup()
 
   MySdCard::deleteFile(SD, "/log.txt");
 
-  MyLcd::setup();
+  // MyLcd::setup();
+  myLcd.setup();
 
   // LITTLEFS
   LOGD(TAG, "mounting SPIFFS");
@@ -490,7 +499,8 @@ void setup()
     LOGD(TAG, "going to deep sleep because of reboot limit.....");
     M5.Lcd.println("going to deep sleep because of reboot limit");
     delay(3000);
-    PowerSaving::enable();
+    // PowerSaving::enable();
+    powerSaving.enable();
     // sleep(deepSleepTimeSec);
     M5.shutdown(deepSleepTimeSec);
   }
@@ -640,17 +650,19 @@ void setup()
   // LOGD(TAG, "Setup ESP32 to sleep for " + String(deepSleepTimeSec) + " Seconds");
 
   // Button setup
-  PowerSaving::setup();
+  // PowerSaving::setup();
+  powerSaving.setup();
   M5.Lcd.println("ALL setup done!");
   M5.Lcd.println("enabling power save.");
   delay(2000);
-  PowerSaving::enable();
+  // PowerSaving::enable();
+  powerSaving.enable();
 }
 
 void loop()
 {
-  PowerSaving::loop();
-
+  // PowerSaving::loop();
+  powerSaving.loop();
   MyBLE::bleRequestData();
   if (MyBLE::newPacketReceived == true)
   {
@@ -667,7 +679,8 @@ void loop()
     MyBLE::printCellInfo();
     DISABLE_LOGD = false;
 
-    MyLcd::showBatteryInfo(MyBLE::packBasicInfo.Volts / 1000.0f, MyBLE::packBasicInfo.Amps / 1000.0f, MyBLE::packCellInfo.CellDiff / 1.0f, MyBLE::packBasicInfo.Temp1 / 10.0f, MyBLE::packBasicInfo.Temp2 / 10.0f, MyBLE::packBasicInfo.CapacityRemainPercent);
+    //MyLcd::showBatteryInfo(MyBLE::packBasicInfo.Volts / 1000.0f, MyBLE::packBasicInfo.Amps / 1000.0f, MyBLE::packCellInfo.CellDiff / 1.0f, MyBLE::packBasicInfo.Temp1 / 10.0f, MyBLE::packBasicInfo.Temp2 / 10.0f, MyBLE::packBasicInfo.CapacityRemainPercent);
+    myLcd.showBatteryInfo(MyBLE::packBasicInfo.Volts / 1000.0f, MyBLE::packBasicInfo.Amps / 1000.0f, MyBLE::packCellInfo.CellDiff / 1.0f, MyBLE::packBasicInfo.Temp1 / 10.0f, MyBLE::packBasicInfo.Temp2 / 10.0f, MyBLE::packBasicInfo.CapacityRemainPercent);
   }
   if (MyBLE::packBasicInfo.Volts <= sleepVoltageMv && WiFi.isConnected())
   {
@@ -676,7 +689,9 @@ void loop()
     // LOGLCD(TAG, logStr);
     WiFi.disconnect(true);
     delay(3000);
-    PowerSaving::enable();
+    // PowerSaving::enable();
+    powerSaving.enable();
+
     // digitalWrite(WIFI_LED, LOW);
     ambientSendIntervalMs = ambientSendIntervalBaseMs * 10;
   }
@@ -716,7 +731,8 @@ void loop()
     ambient.send();
     ambientlLastSent = millis();
 
-    MyLcd::showBatteryInfo(MyBLE::packBasicInfo.Volts / 1000.0f, MyBLE::packBasicInfo.Amps / 1000.0f, MyBLE::packCellInfo.CellDiff / 1.0f, MyBLE::packBasicInfo.Temp1 / 10.0f, MyBLE::packBasicInfo.Temp2 / 10.0f, MyBLE::packBasicInfo.CapacityRemainPercent);
+    //MyLcd::showBatteryInfo(MyBLE::packBasicInfo.Volts / 1000.0f, MyBLE::packBasicInfo.Amps / 1000.0f, MyBLE::packCellInfo.CellDiff / 1.0f, MyBLE::packBasicInfo.Temp1 / 10.0f, MyBLE::packBasicInfo.Temp2 / 10.0f, MyBLE::packBasicInfo.CapacityRemainPercent);
+    myLcd.showBatteryInfo(MyBLE::packBasicInfo.Volts / 1000.0f, MyBLE::packBasicInfo.Amps / 1000.0f, MyBLE::packCellInfo.CellDiff / 1.0f, MyBLE::packBasicInfo.Temp1 / 10.0f, MyBLE::packBasicInfo.Temp2 / 10.0f, MyBLE::packBasicInfo.CapacityRemainPercent);
 
     String megStr = "{\"deviceName\": " + MyBLE::deviceNameStr;
     megStr += ", \"batteryVoltage\": " + String(MyBLE::packBasicInfo.Volts);
@@ -753,7 +769,8 @@ void loop()
     {
       String logStr = "Going to deep sleep now and wake up in " + String(deepSleepTimeSec) + " seconds";
       LOGD(TAG, logStr);
-      M5.Lcd.println(logStr);
+      //M5.Lcd.println(logStr);
+      myLcd.println(logStr);
       delay(2500);
       // esp_deep_sleep_start(); //link error
       // M5.Axp.DeepSleep(SLEEP_SEC(5)); // link error
