@@ -95,13 +95,13 @@ unsigned int rebootLimit = 10;
 MyBLE2 myBLE;
 
 // MQTT
-/*
 PubSubClient mqttClient(wifiClient);
+/*
 String mqtt_server = "broker.emqx.io";  // default
 int mqtt_port = 1883;                   // default
 String mqtt_topic = "junichi/M5Core2/"; // default
 */
-MyMqtt2 mqttClient2(&myBLE);
+MyMqtt2 mqttClient2(&mqttClient, &myBLE);
 
 // LCD
 MyLcd2 myLcd;
@@ -742,6 +742,7 @@ void loop()
       MyMqtt::loop();
       */
 
+      //
       if (!mqttClient2.connected())
       {
         if (mqttClient2.reConnect())
@@ -752,6 +753,7 @@ void loop()
         }
       }
       mqttClient2.loop();
+      //
     }
   }
   if (myBLE.packBasicInfo.Volts > wakeUpVoltageMv && !WiFi.isConnected())
@@ -811,6 +813,7 @@ void loop()
     MyMqtt::publish("stat/" + mqtt_topic + "STATE", msgStr);
     */
 
+    //
     if (!mqttClient2.connected())
     {
       if (mqttClient2.reConnect())
@@ -830,6 +833,7 @@ void loop()
     logStr = logStr + ", message: " + msgStr;
     LOGD(TAG, logStr);
     // LOGLCD(TAG, logStr);
+    //
 
     if (myBLE.packBasicInfo.Volts <= deepSleepVoltageMv)
     {

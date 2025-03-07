@@ -18,14 +18,17 @@ private:
     const String TAG = "MyMqtt2";
     String server = "broker.emqx.io";
     int port = 1883;
+    String user = "mqtt-user";
+    String password = "mqttpass";
     JsonDocument configJson;
     MyBLE2 *myBLE;
 
 public:
-    PubSubClient client;
+    PubSubClient *client;
+    
     String topic = "junichi/M5Core2/";
 
-    MyMqtt2(MyBLE2 *myBLE_);
+    MyMqtt2(PubSubClient *client_, MyBLE2 *myBLE_);
     void setup(JsonDocument configJson);
     void callback(char *topic, byte *payload, unsigned int length);
     int reConnect();

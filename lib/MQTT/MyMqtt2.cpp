@@ -32,29 +32,59 @@ String MyMqtt2::getState()
     return msgStr;
 }
 
-MyMqtt2::MyMqtt2(MyBLE2 *myBLE_)
+MyMqtt2::MyMqtt2(PubSubClient *client_, MyBLE2 *myBLE_)
 {
+    client = client_;
     myBLE = myBLE_;
 }
 
 void MyMqtt2::setup(JsonDocument configJson_)
 {
+    LOGD(TAG, "Setting MQTT parameters ..........");
     configJson = configJson_;
-    String mqttServerConf = configJson["MQTT"]["server"];
+    String mqttServerConf = configJson["mqtt"]["server"];
     if (mqttServerConf != "null")
+    {
         server = mqttServerConf;
-    LOGD(TAG, "MQTT Server: " + server);
-    int mqqtPortConf = configJson["MQTT"]["port"];
+        LOGD(TAG, "MQTT changed server: " + server);
+    }
+    else
+        LOGD(TAG, "MQTT default server: " + server);
+    int mqqtPortConf = configJson["mqtt"]["port"];
     if (mqqtPortConf)
+    {
         port = mqqtPortConf;
-    LOGD(TAG, "MQTT Server port: " + port);
-    String mqttTopicConf = configJson["MQTT"]["topic"];
+        LOGD(TAG, "MQTT server changed port: " + String(port));
+    }
+    else
+        LOGD(TAG, "MQTT server default port: " + String(port));
+    String mqttTopicConf = configJson["mqtt"]["topic"];
     if (mqttTopicConf != "null")
+    {
         topic = mqttTopicConf;
-    LOGD(TAG, "MQTT Topic: " + topic);
-    client.setServer(server.c_str(), port);
-    client.setCallback([this](char *topic_, byte *payload, unsigned int length)
-                       { callback(topic_, payload, length); });
+        LOGD(TAG, "MQTT changed Topic: " + topic);
+    }
+    else
+        LOGD(TAG, "MQTT default Topic: " + topic);
+    String mqttUserConf = configJson["mqtt"]["user"];
+    if (mqttUserConf != "null")
+    {
+        user = mqttUserConf;
+        LOGD(TAG, "MQTT changed User: " + user);
+    }
+    else
+        LOGD(TAG, "MQTT default User: " + user);
+    String mqttPassConf = configJson["mqtt"]["password"];
+    if (mqttPassConf != "null")
+    {
+        password = mqttPassConf;
+        LOGD(TAG, "MQTT changed Pass: " + password);
+    }
+    else
+        LOGD(TAG, "MQTT default Pass: " + password);
+    client->setServer(server.c_str(), port);
+    client->setCallback([this](char *topic_, byte *payload, unsigned int length)
+                        { callback(topic_, payload, length); });
 }
 
 void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
@@ -76,23 +106,24 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
 
     if (String(topic_).equals("cmnd/" + topic + "getState"))
     {
-        if (!client.connected())
+        if (!client->connected())
         {
             reConnect();
         }
         LOGD(TAG, "responding to getState!");
-        client.publish(("stat/" + topic + "RESULT").c_str(), getState().c_str());
+        client->publish(("stat/" + topic + "RESULT").c_str(), getState().c_str());
+
         return;
     }
     if (String(topic_).equals("cmnd/" + topic + "shutdown"))
     {
 
-        if (!client.connected())
+        if (!client->connected())
         {
             reConnect();
         }
         LOGD(TAG, "responding to shutdown!");
-        client.publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
+        client->publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
         delay(2000);
         int sec;
         if (msgStr == "")
@@ -138,12 +169,12 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
             {
                 msgStr = "INVALID";
             }
-            if (!client.connected())
+            if (!client->connected())
             {
                 reConnect();
             }
             LOGD(TAG, "responding to charge!");
-            client.publish(("stat/" + topic + "CHARGE").c_str(), msgStr.c_str());
+            client->publish(("stat/" + topic + "CHARGE").c_str(), msgStr.c_str());
         }
         else if (String(topic_).equals("cmnd/" + topic + "discharge"))
         {
@@ -177,15 +208,15 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
             {
                 msgStr = "INVALID";
             }
-            if (!client.connected())
+            if (!client->connected())
             {
                 reConnect();
             }
             LOGD(TAG, "responding to discharge!");
-            client.publish(("stat/" + topic + "DISCARGE").c_str(), msgStr.c_str());
+            client->publish(("stat/" + topic + "DISCARGE").c_str(), msgStr.c_str());
         }
         msgStr = "{\"chargeStatus\": " + String(chargeStatus) + ", \"didchargeStatus\": " + String(dischargeStatus) + "}";
-        client.publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
+        client->publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
         return;
     }
     JsonDocument megJson;
@@ -202,30 +233,32 @@ int MyMqtt2::reConnect()
 {
     LOGD(TAG, "reConnect() called");
     int i = 0;
-    while (!client.connected())
+    while (!client->connected())
     {
         LOGD(TAG, "Attempting MQTT connection...");
         // Create a random client ID.
         String clientId = "M5Stack-";
         clientId += String(random(0xffff), HEX);
         // Attempt to connect.
-        bool isConnected = client.connect(clientId.c_str());
-        // if (client.connect(clientId.c_str()))
+        LOGD(TAG, "1.................................");
+        bool isConnected = client->connect(clientId.c_str(), user.c_str(), password.c_str());
+        LOGD(TAG, "2.................................");
+        // if (client->connect(clientId.c_str()))
         if (isConnected)
         {
             LOGD(TAG, "Connected.");
             // Once connected, publish an announcement to the topic.
             String topicStr = "stat/" + topic + "STATE";
-            client.publish(topicStr.c_str(), "MQTT reconnected");
+            client->publish(topicStr.c_str(), "MQTT reconnected");
             // ... and resubscribe.
             topicStr = "cmnd/" + topic + "#";
-            client.subscribe(topicStr.c_str());
+            client->subscribe(topicStr.c_str());
             return 0;
         }
         else
         {
             String logStr = "failed, rc = ";
-            logStr = logStr + (client.state());
+            logStr = logStr + (client->state());
             logStr = " try again in 5 seconds";
             LOGLCD(TAG, logStr);
             delay(5000);
@@ -242,22 +275,22 @@ int MyMqtt2::reConnect()
 
 void MyMqtt2::subscribe(String topic)
 {
-    client.subscribe(topic.c_str());
+    client->subscribe(topic.c_str());
 }
 
 void MyMqtt2::publish(String topic, String message)
 {
-    client.publish(topic.c_str(), message.c_str());
+    client->publish(topic.c_str(), message.c_str());
 }
 
 bool MyMqtt2::connected()
 {
-    return (client.connected());
+    return (client->connected());
 }
 
 void MyMqtt2::loop()
 {
-    client.loop();
+    client->loop();
 }
 
 #endif /* MY_MQTT2_CPP */
