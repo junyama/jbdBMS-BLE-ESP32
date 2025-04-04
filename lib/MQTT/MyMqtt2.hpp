@@ -20,12 +20,13 @@ private:
     int port = 1883;
     String user = "mqtt-user";
     String password = "mqttpass";
+    int messageSizeLimit = 128;
     JsonDocument configJson;
     MyBLE2 *myBLE;
 
 public:
     PubSubClient *client;
-    
+
     String topic = "junichi/M5Core2/";
 
     MyMqtt2(PubSubClient *client_, MyBLE2 *myBLE_);
@@ -37,6 +38,8 @@ public:
     bool connected();
     void loop();
     String getState();
+    String getLipoState();
+    String getConfiguration();
 };
 
 #endif /* MY_MQTT2_HPP */

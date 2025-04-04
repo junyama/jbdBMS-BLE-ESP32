@@ -16,8 +16,22 @@ String MyMqtt2::getState()
     msgStr += ", \"batteryChargePercentage\": " + String(myBLE->packBasicInfo.CapacityRemainPercent);
     msgStr += ", \"chargeStatus\": " + String(myBLE->packBasicInfo.MosfetStatus & 1);
     msgStr += ", \"dischargeStatus\": " + String((myBLE->packBasicInfo.MosfetStatus & 2) >> 1);
+    msgStr += "}";
+    return msgStr;
+}
+
+String MyMqtt2::getLipoState()
+{
+    String msgStr = "{\"deviceName\": " + myBLE->deviceNameStr;
     msgStr += ", \"lipoVoltage\": " + String(M5.Axp.GetBatVoltage());
     msgStr += ", \"lipoCurrent\": " + String(M5.Axp.GetBatCurrent());
+    msgStr += "}";
+    return msgStr;
+}
+
+String MyMqtt2::getConfiguration()
+{
+    String msgStr = "{\"deviceName\": " + myBLE->deviceNameStr;
     String sleepVoltage = configJson["sleepVoltage"];
     msgStr += ", \"sleepVoltage\": " + sleepVoltage;
     String wakeUpVoltageMv = configJson["wakeUpVoltageMv"];
@@ -82,6 +96,14 @@ void MyMqtt2::setup(JsonDocument configJson_)
     }
     else
         LOGD(TAG, "MQTT default Pass: " + password);
+    int messageSizeLimitConf = configJson["mqtt"]["messageSizeLimit"];
+    if (messageSizeLimitConf)
+    {
+        messageSizeLimit = messageSizeLimitConf;
+        LOGD(TAG, "MQTT changed messageSizeLimit: " + String(messageSizeLimit));
+    }
+    else
+        LOGD(TAG, "MQTT default messageSizeLimit: " + String(messageSizeLimit));
     client->setServer(server.c_str(), port);
     client->setCallback([this](char *topic_, byte *payload, unsigned int length)
                         { callback(topic_, payload, length); });
@@ -106,22 +128,27 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
 
     if (String(topic_).equals("cmnd/" + topic + "getState"))
     {
-        if (!client->connected())
-        {
-            reConnect();
-        }
         LOGD(TAG, "responding to getState!");
         publish(("stat/" + topic + "RESULT").c_str(), getState().c_str());
 
         return;
     }
+    if (String(topic_).equals("cmnd/" + topic + "getLipoState"))
+    {
+        LOGD(TAG, "responding to getLipoState!");
+        publish(("stat/" + topic + "RESULT").c_str(), getLipoState().c_str());
+
+        return;
+    }
+    if (String(topic_).equals("cmnd/" + topic + "getConfiguration"))
+    {
+        LOGD(TAG, "responding to getConfiguration!");
+        publish(("stat/" + topic + "RESULT").c_str(), getConfiguration().c_str());
+
+        return;
+    }
     if (String(topic_).equals("cmnd/" + topic + "shutdown"))
     {
-
-        if (!client->connected())
-        {
-            reConnect();
-        }
         LOGD(TAG, "responding to shutdown!");
         publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
         delay(2000);
@@ -169,10 +196,6 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
             {
                 msgStr = "INVALID";
             }
-            if (!client->connected())
-            {
-                reConnect();
-            }
             LOGD(TAG, "responding to charge!");
             publish(("stat/" + topic + "CHARGE").c_str(), msgStr.c_str());
         }
@@ -207,10 +230,6 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
             else
             {
                 msgStr = "INVALID";
-            }
-            if (!client->connected())
-            {
-                reConnect();
             }
             LOGD(TAG, "responding to discharge!");
             publish(("stat/" + topic + "DISCARGE").c_str(), msgStr.c_str());
@@ -281,12 +300,15 @@ void MyMqtt2::subscribe(String topic)
 
 void MyMqtt2::publish(String topic, String message)
 {
-    LOGD(TAG, "publishing >>>>> topic: " + topic + ", massage: " + message);
+    LOGD(TAG, "publishing >>>>> topic: " + topic + ", message: " + message);
     if (!client->connected())
     {
         reConnect();
     }
-    client->publish(topic.c_str(), message.c_str());
+    for (int i = 0; i < message.length(); i = i + messageSizeLimit)
+    {
+        client->publish(topic.c_str(), message.substring(i, i + messageSizeLimit).c_str());
+    }
 }
 
 bool MyMqtt2::connected()
