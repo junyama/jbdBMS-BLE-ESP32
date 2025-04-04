@@ -35,7 +35,8 @@ using namespace MyLOG;
 // BLEUUID charUUID_rx("0000ff01-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module //m
 
 
-MyBLE2::MyBLE2()
+MyBLE2::MyBLE2(JsonDocument *configJson_)
+: configJson(configJson_)
 {
 }
 
@@ -476,7 +477,7 @@ void MyBLE2::bleStartup()
     // have detected a new device.  Specify that we want active scanning and start the
     // scan to run for 5 seconds.
     BLEScan *pBLEScan = BLEDevice::getScan();
-    myAdvertisedDeviceCallbacks = new MyAdvertisedDeviceCallbacks(serviceUUID);
+    myAdvertisedDeviceCallbacks = new MyAdvertisedDeviceCallbacks(serviceUUID, configJson);
     pBLEScan->setAdvertisedDeviceCallbacks(myAdvertisedDeviceCallbacks);
     // pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
     pBLEScan->setInterval(1349);

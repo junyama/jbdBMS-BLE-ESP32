@@ -26,8 +26,8 @@ String MyMqtt2::getState()
     msgStr += ", \"deepSleepVoltageMv\": " + deepSleepVoltageMv;
     String deepSleepTimeSec = configJson["deepSleepTimeSec"];
     msgStr += ", \"deepSleepTimeSec\": " + deepSleepTimeSec;
-    String ambientSendIntervalBaseMs = configJson["ambientSendIntervalBaseMs"];
-    msgStr += ", \"ambientSendIntervalBaseMs\": " + ambientSendIntervalBaseMs;
+    int ambientSendIntervalBaseMs = configJson["ambient"]["ambientSendIntervalBaseMs"];
+    msgStr += ", \"ambientSendIntervalBaseMs\": " + String(ambientSendIntervalBaseMs);
     msgStr += "}";
     return msgStr;
 }
@@ -111,7 +111,7 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
             reConnect();
         }
         LOGD(TAG, "responding to getState!");
-        client->publish(("stat/" + topic + "RESULT").c_str(), getState().c_str());
+        publish(("stat/" + topic + "RESULT").c_str(), getState().c_str());
 
         return;
     }
@@ -123,7 +123,7 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
             reConnect();
         }
         LOGD(TAG, "responding to shutdown!");
-        client->publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
+        publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
         delay(2000);
         int sec;
         if (msgStr == "")
@@ -174,7 +174,7 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
                 reConnect();
             }
             LOGD(TAG, "responding to charge!");
-            client->publish(("stat/" + topic + "CHARGE").c_str(), msgStr.c_str());
+            publish(("stat/" + topic + "CHARGE").c_str(), msgStr.c_str());
         }
         else if (String(topic_).equals("cmnd/" + topic + "discharge"))
         {
@@ -213,10 +213,10 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
                 reConnect();
             }
             LOGD(TAG, "responding to discharge!");
-            client->publish(("stat/" + topic + "DISCARGE").c_str(), msgStr.c_str());
+            publish(("stat/" + topic + "DISCARGE").c_str(), msgStr.c_str());
         }
         msgStr = "{\"chargeStatus\": " + String(chargeStatus) + ", \"didchargeStatus\": " + String(dischargeStatus) + "}";
-        client->publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
+        publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
         return;
     }
     JsonDocument megJson;
@@ -242,6 +242,7 @@ int MyMqtt2::reConnect()
         // Attempt to connect.
         LOGD(TAG, "1.................................");
         bool isConnected = client->connect(clientId.c_str(), user.c_str(), password.c_str());
+        LOGD(TAG, "user: " + user + ", password: " + password);
         LOGD(TAG, "2.................................");
         // if (client->connect(clientId.c_str()))
         if (isConnected)
@@ -249,7 +250,7 @@ int MyMqtt2::reConnect()
             LOGD(TAG, "Connected.");
             // Once connected, publish an announcement to the topic.
             String topicStr = "stat/" + topic + "STATE";
-            client->publish(topicStr.c_str(), "MQTT reconnected");
+            publish(topicStr.c_str(), "MQTT reconnected");
             // ... and resubscribe.
             topicStr = "cmnd/" + topic + "#";
             client->subscribe(topicStr.c_str());
@@ -280,6 +281,11 @@ void MyMqtt2::subscribe(String topic)
 
 void MyMqtt2::publish(String topic, String message)
 {
+    LOGD(TAG, "publishing >>>>> topic: " + topic + ", massage: " + message);
+    if (!client->connected())
+    {
+        reConnect();
+    }
     client->publish(topic.c_str(), message.c_str());
 }
 

@@ -4,6 +4,7 @@
 #include "MyDebug.hpp"
 #include "BLEDevice.h"
 #include <Arduino.h>
+#include <ArduinoJson.h>
 
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 { // this is called by some underlying magic
@@ -11,7 +12,9 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 private:
 	static const String TAG;
 	BLEUUID serviceUUID;
+	JsonDocument *configJson;
 	void onResult(BLEAdvertisedDevice advertisedDevice);
+	bool isAddressInConfigList(BLEAdvertisedDevice advertisedDevice);
 
 public:
 	boolean doConnect;
@@ -19,7 +22,7 @@ public:
 
 	BLEAdvertisedDevice *myDevice;
 	MyAdvertisedDeviceCallbacks();
-	MyAdvertisedDeviceCallbacks(BLEUUID serviceUUID);
+	MyAdvertisedDeviceCallbacks(BLEUUID serviceUUID, JsonDocument *configJson_);
 };
 
 #endif /* MY_ADVERTISE_DEVICE_HPP */

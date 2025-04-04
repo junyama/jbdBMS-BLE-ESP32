@@ -92,15 +92,10 @@ unsigned int rebootCount = 0;
 unsigned int rebootLimit = 10;
 
 // BLE
-MyBLE2 myBLE;
+MyBLE2 myBLE(&configJson);
 
 // MQTT
 PubSubClient mqttClient(wifiClient);
-/*
-String mqtt_server = "broker.emqx.io";  // default
-int mqtt_port = 1883;                   // default
-String mqtt_topic = "junichi/M5Core2/"; // default
-*/
 MyMqtt2 mqttClient2(&mqttClient, &myBLE);
 
 // LCD

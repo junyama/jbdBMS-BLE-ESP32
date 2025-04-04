@@ -14,6 +14,16 @@
       "pass": "takehiro"
     }
   ],
+  "BLE": [
+    {
+      "mac": "10:a5:62:6c:6b:e4",
+      "pass": "takehiro"
+    },
+    {
+      "mac": "Jun-FS020W",
+      "pass": "takehiro"
+    }
+  ],
   "poiURL": "http://junichi2.ddns.net/",
   "ambient": {
     "channelId": 50366,

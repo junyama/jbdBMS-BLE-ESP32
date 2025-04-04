@@ -2,6 +2,8 @@
 #define MY_BLE2_HPP
 
 #include <Arduino.h>
+#include <ArduinoJson.h>
+
 #include "MyDebug.hpp"
 #include "BLEDevice.h"
 #include "MyAdvertisedDeviceCallbacks.hpp"
@@ -89,6 +91,8 @@ private:
     // void bmsEnableDischarge();
     void bmsMosfetCtrl();
 
+    JsonDocument *configJson;
+
 public:
     byte ctrlCommand = 0;
     byte commandParam = 0;
@@ -113,7 +117,7 @@ public:
     int numberOfTemperature = 2;
 
     // MyBLE();
-    MyBLE2();
+    MyBLE2(JsonDocument *configJson_);
     void printBasicInfo(); // debug all data to uart
     void printCellInfo();  // debug all data to uart
     void bleStartup();
