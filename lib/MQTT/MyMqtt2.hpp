@@ -17,6 +17,7 @@ class MyMqtt2
 private:
     const String TAG = "MyMqtt2";
     String server = "broker.emqx.io";
+    //String server = "192.168.0.20";
     int port = 1883;
     String user = "mqtt-user";
     String password = "mqttpass";
