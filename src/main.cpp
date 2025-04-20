@@ -507,7 +507,7 @@ void setup()
     rebootCount = 0;
     configJson["rebootCount"] = 0;
     saveConfig();
-    String logStr = "going to deep sleep because exceeding reboot limit (" +  String(rebootLimit) + "). Wake up in " + String(deepSleepTimeSec) + "sec";
+    String logStr = "going to deep sleep because exceeding reboot limit (" + String(rebootLimit) + "). Wake up in " + String(deepSleepTimeSec) + "sec";
     LOGD(TAG, logStr);
     myLcd.println(logStr);
     mqttClient2.publish("stat/" + mqttClient2.topic + "STATE", logStr);
@@ -656,6 +656,9 @@ void setup()
 
   mqttClient2.setup(configJson);
 
+  // Home aAssistant discoverry
+  mqttClient2.publishHaDiscovery();
+
   M5.Lcd.println("MQTT setup done!");
 
   //  setup BLE
@@ -704,7 +707,8 @@ void loop()
     myBLE.printCellInfo();
     DISABLE_LOGD = false;
 
-    // MyLcd::showBatteryInfo(myBLE.packBasicInfo.Volts / 1000.0f, myBLE.packBasicInfo.Amps / 1000.0f, myBLE.packCellInfo.CellDiff / 1.0f, myBLE.packBasicInfo.Temp1 / 10.0f, myBLE.packBasicInfo.Temp2 / 10.0f, myBLE.packBasicInfo.CapacityRemainPercent);
+    mqttClient2.publishJson("stat/" + mqttClient2.topic + "STATE", mqttClient2.getState2(), true);
+
     myLcd.showBatteryInfo(myBLE.packBasicInfo.Volts / 1000.0f, myBLE.packBasicInfo.Amps / 1000.0f, myBLE.packCellInfo.CellDiff / 1.0f, myBLE.packBasicInfo.Temp1 / 10.0f, myBLE.packBasicInfo.Temp2 / 10.0f, myBLE.packBasicInfo.CapacityRemainPercent);
   }
   if (myBLE.packBasicInfo.Volts <= sleepVoltageMv && WiFi.isConnected())
@@ -793,9 +797,9 @@ void loop()
     ambientClient2.ambientlLastSent = millis();
 
     // MyLcd::showBatteryInfo(myBLE.packBasicInfo.Volts / 1000.0f, myBLE.packBasicInfo.Amps / 1000.0f, myBLE.packCellInfo.CellDiff / 1.0f, myBLE.packBasicInfo.Temp1 / 10.0f, myBLE.packBasicInfo.Temp2 / 10.0f, myBLE.packBasicInfo.CapacityRemainPercent);
-    myLcd.showBatteryInfo(myBLE.packBasicInfo.Volts / 1000.0f, myBLE.packBasicInfo.Amps / 1000.0f, myBLE.packCellInfo.CellDiff / 1.0f, myBLE.packBasicInfo.Temp1 / 10.0f, myBLE.packBasicInfo.Temp2 / 10.0f, myBLE.packBasicInfo.CapacityRemainPercent);
+    //myLcd.showBatteryInfo(myBLE.packBasicInfo.Volts / 1000.0f, myBLE.packBasicInfo.Amps / 1000.0f, myBLE.packCellInfo.CellDiff / 1.0f, myBLE.packBasicInfo.Temp1 / 10.0f, myBLE.packBasicInfo.Temp2 / 10.0f, myBLE.packBasicInfo.CapacityRemainPercent);
 
-    String msgStr = mqttClient2.getState();
+    //String msgStr = mqttClient2.getState();
 
     // MQTT publish
     /*
@@ -806,7 +810,7 @@ void loop()
     }
     // mqttClient.loop();
     MyMqtt::publish("stat/" + mqtt_topic + "STATE", msgStr);
-    */
+    //
 
     //
     if (!mqttClient2.connected())
@@ -818,15 +822,16 @@ void loop()
         reset();
       }
     }
+    */
     // mqttClient.loop();
-    mqttClient2.publish("stat/" + mqttClient2.topic + "STATE", msgStr);
+    //mqttClient2.publish("stat/" + mqttClient2.topic + "STATE", msgStr);
 
     // String logStr = "ambient sent, channelId: " + String(channelId) + ", message: " + msgStr;
     // LOGD(TAG, logStr);
     //  LOGLCD(TAG, logStr);
-    String logStr = "MQTT publised, topic: stat/" + mqttClient2.topic + "STATE";
-    logStr = logStr + ", message: " + msgStr;
-    LOGD(TAG, logStr);
+    //String logStr = "MQTT publised, topic: stat/" + mqttClient2.topic + "STATE";
+    //logStr = logStr + ", message: " + msgStr;
+    //LOGD(TAG, logStr);
     // LOGLCD(TAG, logStr);
     //
 

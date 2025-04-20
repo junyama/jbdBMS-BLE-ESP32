@@ -12,6 +12,10 @@
     {
       "ssid": "Jun-FS020W",
       "pass": "takehiro"
+    },
+    {
+      "ssid": "Jun-iPhone",
+      "pass": "takehiro"
     }
   ],
   "BLE": [
@@ -20,7 +24,11 @@
       "pass": "takehiro"
     },
     {
-      "mac": "Jun-FS020W",
+      "mac": "70:3e:97:07:b3:09",
+      "pass": "takehiro"
+    },
+    {
+      "mac": "4c:04:20:37:c1:a4",
       "pass": "takehiro"
     }
   ],
@@ -33,11 +41,116 @@
     "ambientSendIntervalBaseMs": 600000
   },
   "mqtt": {
-    "server": "broker.emqx.io",
+    "server": "192.168.0.20",
+    "server2": "broker.emqx.io",
+    "server3": "junichi.ddns.net",
     "port": 1883,
     "user": "mqtt-user",
     "password": "mqttpass",
-    "topic": "junichi/M5Core2/"
+    "topic": "junichi/M5Core2/",
+    "discoveryTopic": "homeassistant/device/junichiBMS_0/config",
+    "discoveryPayload": {
+      "dev": {
+        "ids": "junichiBMS_0",
+        "name": "BMS on M5Stack",
+        "mf": "M5Stack",
+        "hw": "1.0rev2"
+      },
+      "o": {
+        "name": " bla2mqtt",
+        "sw": " 2.1",
+        "url": "https://bla2mqtt.example.com/support"
+      },
+      "cmps": {
+        "some_unique_component_id0": {
+          "p": "text",
+          "name": "Device Name",
+          "device_class": "battery",
+          "value_template": "{{ value_json.deviceName}}",
+          "unique_id": "name00ae_v"
+        },
+        "some_unique_component_id1": {
+          "p": "sensor",
+          "name": "Battery Voltage",
+          "device_class": "voltage",
+          "unit_of_measurement": "V",
+          "value_template": "{{ value_json.batteryVoltage}}",
+          "unique_id": "volt01ae_v"
+        },
+        "some_unique_component_id2": {
+          "p": "sensor",
+          "name": "Battery Current",
+          "device_class": "current",
+          "unit_of_measurement": "A",
+          "value_template": "{{ value_json.batteryCurrent}}",
+          "unique_id": "amp01ae_c"
+        },
+        "some_unique_component_id3": {
+          "p": "sensor",
+          "name": "Battery Temperature 1",
+          "device_class": "temperature",
+          "unit_of_measurement": "°C",
+          "value_template": "{{ value_json.batteryTemp1}}",
+          "unique_id": "temp01ae_t"
+        },
+        "some_unique_component_id3_1": {
+          "p": "sensor",
+          "name": "Battery Temperature 2",
+          "device_class": "temperature",
+          "unit_of_measurement": "°C",
+          "value_template": "{{ value_json.batteryTemp2}}",
+          "unique_id": "temp02ae_t"
+        },
+        "some_unique_component_id4": {
+          "p": "sensor",
+          "device_class": "battery",
+          "name": "Battery Capacity",
+          "unit_of_measurement": "%",
+          "value_template": "{{ value_json.batteryChargePercentage}}",
+          "unique_id": "battery01ae_p"
+        },
+        "some_unique_component_id5": {
+          "p": "switch",
+          "name": "Charge Switch",
+          "command_topic": "cmnd/junichi/M5Core2/charge",
+          "payload_on": "1",
+          "payload_off": "0",
+          "state_on": 1,
+          "state_off": 0,
+          "value_template": "{{ value_json.chargeStatus }}",
+          "unique_id": "charge01ae_c"
+        },
+        "some_unique_component_id6": {
+          "p": "switch",
+          "name": "Discharge Switch",
+          "command_topic": "cmnd/junichi/M5Core2/discharge",
+          "payload_on": "1",
+          "payload_off": "0",
+          "state_on": 1,
+          "state_off": 0,
+          "value_template": "{{ value_json.dischargeStatus }}",
+          "unique_id": "discharge01ae_d"
+        },
+        "some_unique_component_id7": {
+          "p": "sensor",
+          "name": "LiPo Voltage",
+          "device_class": "voltage",
+          "unit_of_measurement": "V",
+          "value_template": "{{ value_json.lipoVoltage}}",
+          "unique_id": "lipov01ae_p"
+        },
+        "some_unique_component_id8": {
+          "p": "sensor",
+          "name": "LiPo Current",
+          "device_class": "current",
+          "unit_of_measurement": "A",
+          "value_template": "{{ value_json.lipoCurrent}}",
+          "unique_id": "lipoc01ae_p"
+        }
+      },
+      "state_topic": "stat/junichi/M5Core2/STATE",
+      "qos": 2
+    }
   },
-  "rebootCount": 4
+  "rebootCount": 8
 }

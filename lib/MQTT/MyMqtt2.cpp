@@ -20,6 +20,28 @@ String MyMqtt2::getState()
     return msgStr;
 }
 
+JsonDocument MyMqtt2::getState2()
+{
+    JsonDocument doc;
+    doc["deviceName"] = myBLE->deviceNameStr;
+    doc["batteryVoltage"] = String(myBLE->packBasicInfo.Volts / 1000.0);
+    doc["batteryCurrent"] = String(myBLE->packBasicInfo.Amps / 1000.0);
+    doc["batteryTemp1"] = String(myBLE->packBasicInfo.Temp1 / 10.0);
+    if (configJson["numberOfTemperature"] == 2)
+        doc["batteryTemp2"] = String(myBLE->packBasicInfo.Temp2 / 10.0);
+    doc["batteryChargePercentage"] = String(myBLE->packBasicInfo.CapacityRemainPercent);
+    doc["chargeStatus"] = String(myBLE->packBasicInfo.MosfetStatus & 1);
+    doc["dischargeStatus"] = String((myBLE->packBasicInfo.MosfetStatus & 2) >> 1);
+    doc["lipoVoltage"] = String(M5.Axp.GetBatVoltage());
+    doc["lipoCurrent"] = String(M5.Axp.GetBatCurrent());
+    doc["sleepVoltage"] = configJson["sleepVoltage"];
+    doc["wakeUpVoltageMv"] = configJson["wakeUpVoltageMv"];
+    doc["deepSleepVoltageMv"] = configJson["deepSleepVoltageMv"];
+    doc["deepSleepTimeSec"] = configJson["deepSleepTimeSec"];
+    doc["ambientSendIntervalBaseMs"] = configJson["ambient"]["ambientSendIntervalBaseMs"];
+    return doc;
+}
+
 String MyMqtt2::getLipoState()
 {
     String msgStr = "{\"deviceName\": " + myBLE->deviceNameStr;
@@ -45,6 +67,91 @@ String MyMqtt2::getConfiguration()
     msgStr += "}";
     return msgStr;
 }
+
+JsonDocument MyMqtt2::getBmsState()
+{
+    JsonDocument doc;
+    doc["deviceName"] = myBLE->deviceNameStr;
+    doc["batteryVoltage"] = String(myBLE->packBasicInfo.Volts / 1000.0);
+    doc["batteryCurrent"] = String(myBLE->packBasicInfo.Amps / 1000.0);
+    doc["batteryTemp1"] = String(myBLE->packBasicInfo.Temp1 / 10.0);
+    if (configJson["numberOfTemperature"] == 2)
+        doc["batteryTemp2"] = String(myBLE->packBasicInfo.Temp2 / 10.0);
+    doc["batteryChargePercentage"] = String(myBLE->packBasicInfo.CapacityRemainPercent);
+    doc["chargeStatus"] = String(myBLE->packBasicInfo.MosfetStatus & 1);
+    doc["dischargeStatus"] = String((myBLE->packBasicInfo.MosfetStatus & 2) >> 1);
+    doc["lipoVoltage"] = String(M5.Axp.GetBatVoltage());
+    doc["lipoCurrent"] = String(M5.Axp.GetBatCurrent());
+    doc["sleepVoltage"] = configJson["sleepVoltage"];
+    doc["wakeUpVoltageMv"] = configJson["wakeUpVoltageMv"];
+    doc["deepSleepVoltageMv"] = configJson["deepSleepVoltageMv"];
+    doc["deepSleepTimeSec"] = configJson["deepSleepTimeSec"];
+    doc["ambientSendIntervalBaseMs"] = configJson["ambient"]["ambientSendIntervalBaseMs"];
+    return doc;
+}
+
+void MyMqtt2::publishHaDiscovery()
+ {
+     String topic = "homeassistant/device/junichiBMS_0/config";
+     JsonDocument payload;
+     payload["device"]["ids"] = "junichiBMS_0";
+     payload["device"]["name"] = "junichiBMS_0";
+     payload["device"]["mf"] = "M5Stack";
+     payload["device"]["hw"] = "1.0rev2";
+     payload["o"]["name"] = "1.0rev2";
+     payload["o"]["sw"] = "1.0rev2";
+     payload["o"]["url"] = "1.0rev2";
+     payload["cmps"]["some_unique_component_id1"]["p"] = "sensor";
+     payload["device"]["hw"] = "1.0rev2";
+ 
+ 
+     String payloadStr = "{\"dev\":{";
+     payloadStr += "\"ids\":\"junichiBMS_0\"";
+     payloadStr += ",\"name\":\"junichiBMS_0\"";
+     payloadStr += ",\"mf\":\"M5Stack\"";
+     payloadStr += ",\"hw\":\"1.0rev2\"";
+     payloadStr += "},";
+     payloadStr += "\"o\":{";
+     payloadStr += "\"name\":\" bla2mqtt\"";
+     payloadStr += ",\"sw\":\" 2.1\",";
+     payloadStr += "\"url\":\"https://bla2mqtt.example.com/support\"";
+     payloadStr += "},";
+     payloadStr += "\"cmps\":{";
+     payloadStr += "\"some_unique_component_id1\":{";
+     payloadStr += "\"p\":\"sensor\",";
+     payloadStr += "\"device_class\":\"voltage\",";
+     payloadStr += "\"unit_of_measurement\":\"V\",";
+     payloadStr += "\"value_template\":\"{{ value_json.batteryVoltage}}\",";
+     payloadStr += "\"unique_id\":\"volt01ae_v\"},";
+     payloadStr += "\"some_unique_component_id2\":{";
+     payloadStr += "\"p\":\"sensor\",";
+     payloadStr += "\"device_class\":\"temperature\",";
+     payloadStr += "\"unit_of_measurement\":\"°C\",";
+     payloadStr += "\"value_template\":\"{{ value_json.batteryTemp1}}\",";
+     payloadStr += "\"unique_id\":\"temp01ae_h\"}},";
+     payloadStr += "\"state_topic\":\"stat/junichi/M5Core2/STATE\",";
+     payloadStr += "\"qos\":2";
+     payloadStr += "}";
+     if (configJson["mqtt"]["discoveryTopic"] && configJson["mqtt"]["discoveryPayload"])
+     {
+         LOGD(TAG, "using discovery topic and payload from config.json");
+         String topic_ = configJson["mqtt"]["discoveryTopic"];
+         topic = topic_;
+         payload = configJson["mqtt"]["discoveryPayload"];
+     }
+     else
+     {
+         LOGD(TAG, "using default discovery topic and payload");
+         DeserializationError error = deserializeJson(payload, payloadStr.c_str());
+         if (error)
+         {
+             LOGD(TAG, "Deserialization error: " + payloadStr);
+             return;
+         }
+     }
+     LOGD(TAG, "publishing for HA discovery......");
+     publishJson(topic, payload, true);
+ }
 
 MyMqtt2::MyMqtt2(PubSubClient *client_, MyBLE2 *myBLE_)
 {
@@ -96,6 +203,7 @@ void MyMqtt2::setup(JsonDocument configJson_)
     }
     else
         LOGD(TAG, "MQTT default Pass: " + password);
+    /*
     int messageSizeLimitConf = configJson["mqtt"]["messageSizeLimit"];
     if (messageSizeLimitConf)
     {
@@ -104,6 +212,7 @@ void MyMqtt2::setup(JsonDocument configJson_)
     }
     else
         LOGD(TAG, "MQTT default messageSizeLimit: " + String(messageSizeLimit));
+    */
     client->setServer(server.c_str(), port);
     client->setCallback([this](char *topic_, byte *payload, unsigned int length)
                         { callback(topic_, payload, length); });
@@ -126,6 +235,13 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
     LOGD(TAG, logStr);
     LOGLCD(TAG, logStr);
 
+    if (String(topic_).equals("cmnd/" + topic + "getBmsState"))
+    {
+        LOGD(TAG, "responding to getBmsState!");
+        publishJson("stat/" + topic + "RESULT", getBmsState(), true);
+        publishJson("stat/" + topic + "STATE", getBmsState(), true);
+        return;
+    }
     if (String(topic_).equals("cmnd/" + topic + "getState"))
     {
         LOGD(TAG, "responding to getState!");
@@ -273,6 +389,8 @@ int MyMqtt2::reConnect()
             // ... and resubscribe.
             topicStr = "cmnd/" + topic + "#";
             client->subscribe(topicStr.c_str());
+            // Home aAssistant discoverry
+            //publishHaDiscovery(); //this makes reconnect fail loop
             return 0;
         }
         else
@@ -309,6 +427,27 @@ void MyMqtt2::publish(String topic, String message)
     {
         client->publish(topic.c_str(), message.substring(i, i + messageSizeLimit).c_str());
     }
+}
+
+void MyMqtt2::publishJson(String topic, JsonDocument doc, bool retained)
+{
+    String jsonStr;
+    serializeJson(doc, jsonStr);
+    LOGD(TAG, "publishing Json >>>>> topic: " + topic + ", payload: " + jsonStr);
+    if (!client->connected())
+    {
+        reConnect();
+    }
+    /*
+    client->beginPublish(topic.c_str(), measureJson(doc), retained);
+    serializeJson(doc, *client);
+    client->endPublish();
+    */
+    client->beginPublish(topic.c_str(), measureJson(doc), retained);
+    BufferingPrint bufferedClient(*client, 32);
+    serializeJson(doc, bufferedClient);
+    bufferedClient.flush();
+    client->endPublish();
 }
 
 bool MyMqtt2::connected()

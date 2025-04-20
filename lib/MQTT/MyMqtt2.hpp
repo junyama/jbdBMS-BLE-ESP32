@@ -5,6 +5,7 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
+#include <StreamUtils.h>
 
 #include "MyDebug.hpp"
 #include <Arduino.h>
@@ -35,11 +36,15 @@ public:
     int reConnect();
     void subscribe(String topic);
     void publish(String topic, String message);
+    void publishJson(String topic, JsonDocument json, bool retain);
     bool connected();
     void loop();
     String getState();
+    JsonDocument getState2();
     String getLipoState();
     String getConfiguration();
+    JsonDocument getBmsState();
+    void publishHaDiscovery();
 };
 
 #endif /* MY_MQTT2_HPP */
