@@ -33,6 +33,9 @@
     }
   ],
   "poiURL": "http://junichi2.ddns.net/",
+  "voltMater": {
+    "measurmentIntervalMs": 60000
+  },
   "ambient": {
     "channelId": 50366,
     "writeKey": "ccb476294fe16acd",
@@ -47,104 +50,112 @@
     "port": 1883,
     "user": "mqtt-user",
     "password": "mqttpass",
-    "topic": "junichiBMS_0/",
+    "topic": "junichiBMS_1/",
     "discoveryPayload": {
-      "dev": {
-        "ids": "junichiBMS_0",
-        "name": "BMS on M5Stack",
-        "mf": "M5Stack",
-        "hw": "1.0rev2"
+      "device": {
+        "identifiers": "junichiBMS_1",
+        "name": "junichiBMS_1",
+        "manufacturer": "M5Stack",
+        "hw_version": "1.0rev2"
       },
-      "o": {
+      "origin": {
         "name": " bla2mqtt",
-        "sw": " 2.1",
-        "url": "https://bla2mqtt.example.com/support"
+        "sw_version": " 2.1",
+        "support_url": "https://bla2mqtt.example.com/support"
       },
-      "cmps": {
-        "some_unique_component_id0": {
-          "p": "text",
+      "components": {
+        "battery_name": {
+          "platform": "text",
           "name": "Device Name",
           "device_class": "battery",
           "value_template": "{{ value_json.deviceName}}",
-          "unique_id": "name00ae_v"
+          "unique_id": "ea32706b-4053-4d1e-8628-606287484ea7"
         },
-        "some_unique_component_id1": {
-          "p": "sensor",
-          "name": "Battery Voltage",
+        "battery_voltage": {
+          "platform": "sensor",
+          "name": "Sub Battery Voltage",
           "device_class": "voltage",
           "unit_of_measurement": "V",
           "value_template": "{{ value_json.batteryVoltage}}",
-          "unique_id": "volt01ae_v"
+          "unique_id": "74756c0d-e6ef-4ad3-8788-ec88de4f4714"
         },
-        "some_unique_component_id2": {
-          "p": "sensor",
-          "name": "Battery Current",
+        "battery_current": {
+          "platform": "sensor",
+          "name": "Sub Battery Current",
           "device_class": "current",
           "unit_of_measurement": "A",
           "value_template": "{{ value_json.batteryCurrent}}",
-          "unique_id": "amp01ae_c"
+          "unique_id": "c298b198-0dc8-4452-b4af-a3144557bb9b"
         },
-        "some_unique_component_id3": {
-          "p": "sensor",
-          "name": "Battery Temperature 1",
+        "battery_temparature_1": {
+          "platform": "sensor",
+          "name": "Sub Battery Temperature 1",
           "device_class": "temperature",
           "unit_of_measurement": "°C",
           "value_template": "{{ value_json.batteryTemp1}}",
-          "unique_id": "temp01ae_t"
+          "unique_id": "84dffa30-6d01-45a6-9900-6784522feea4"
         },
-        "some_unique_component_id3_1": {
-          "p": "sensor",
-          "name": "Battery Temperature 2",
+        "battery_temparature_2": {
+          "platform": "sensor",
+          "name": "Sub Battery Temperature 2",
           "device_class": "temperature",
           "unit_of_measurement": "°C",
           "value_template": "{{ value_json.batteryTemp2}}",
-          "unique_id": "temp02ae_t"
+          "unique_id": "94024217-d4ab-41df-90b0-37f8893ddc57"
         },
-        "some_unique_component_id4": {
-          "p": "sensor",
+        "battery_capacity": {
+          "platform": "sensor",
           "device_class": "battery",
-          "name": "Battery Capacity",
+          "name": "Sub Battery Capacity",
           "unit_of_measurement": "%",
           "value_template": "{{ value_json.batteryChargePercentage}}",
-          "unique_id": "battery01ae_p"
+          "unique_id": "b86ae8e9-1c2b-4163-b9db-1a3b105cc440"
         },
-        "some_unique_component_id5": {
-          "p": "switch",
+        "charge_switch": {
+          "platform": "switch",
           "name": "Charge Switch",
-          "command_topic": "cmnd/junichi/M5Core2/charge",
+          "command_topic": "cmnd/junichiBMS_1/charge",
           "payload_on": "1",
           "payload_off": "0",
           "state_on": 1,
           "state_off": 0,
           "value_template": "{{ value_json.chargeStatus }}",
-          "unique_id": "charge01ae_c"
+          "unique_id": "d638db4c-6905-4619-8702-d44e6d86f970"
         },
-        "some_unique_component_id6": {
-          "p": "switch",
+        "discharge_switch": {
+          "platform": "switch",
           "name": "Discharge Switch",
-          "command_topic": "cmnd/junichi/M5Core2/discharge",
+          "command_topic": "cmnd/junichiBMS_1/discharge",
           "payload_on": "1",
           "payload_off": "0",
           "state_on": 1,
           "state_off": 0,
           "value_template": "{{ value_json.dischargeStatus }}",
-          "unique_id": "discharge01ae_d"
+          "unique_id": "0c49015d-5e4e-4e3b-837d-4e0ff8b9b090"
         },
-        "some_unique_component_id7": {
-          "p": "sensor",
+        "main_battery_voltage": {
+          "platform": "sensor",
+          "name": "Main Battery Voltage",
+          "device_class": "voltage",
+          "unit_of_measurement": "V",
+          "value_template": "{{ value_json.calVoltage }}",
+          "unique_id": "3bd7ebc9-4a10-4553-b00d-e6ca1755cf6d"
+        },
+        "lipo_voltage": {
+          "platform": "sensor",
           "name": "LiPo Voltage",
           "device_class": "voltage",
           "unit_of_measurement": "V",
           "value_template": "{{ value_json.lipoVoltage}}",
-          "unique_id": "lipov01ae_p"
+          "unique_id": "c04a83a1-9250-461b-b322-98df9a2e3ca5"
         },
-        "some_unique_component_id8": {
-          "p": "sensor",
+        "lipo_current": {
+          "platform": "sensor",
           "name": "LiPo Current",
           "device_class": "current",
           "unit_of_measurement": "A",
           "value_template": "{{ value_json.lipoCurrent}}",
-          "unique_id": "lipoc01ae_p"
+          "unique_id": "4dc19e7c-8311-428e-87d7-27e45219db61"
         }
       },
       "state_topic": "stat/junichi/M5Core2/STATE",

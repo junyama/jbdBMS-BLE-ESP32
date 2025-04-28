@@ -64,7 +64,7 @@ void MyLcd2::showBatteryInfo(float volt, float current, float cellDiff, float te
     sprintf(str, "%05.2f", temparature2);
     M5.Lcd.print(str);
     M5.Lcd.setTextFont(4);
-    M5.Lcd.print("C");
+    M5.Lcd.print("V");
     M5.Lcd.setCursor(1, 181, 7);
     sprintf(str, "%05.2f", M5.Axp.GetBatVoltage());
     M5.Lcd.print(str);

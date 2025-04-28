@@ -10,6 +10,7 @@
 #include "MyDebug.hpp"
 #include <Arduino.h>
 #include "MyBLE2.hpp"
+#include "VoltMater.hpp"
 
 #define MSG_BUFFER_SIZE (50)
 
@@ -17,23 +18,26 @@ class MyMqtt2
 {
 private:
     const String TAG = "MyMqtt2";
-    String server = "broker.emqx.io";
+    bool disabled = false;
+    String server = "junichi.ddns.net";
     int port = 1883;
     String user = "mqtt-user";
     String password = "mqttpass";
     int messageSizeLimit = 128;
     JsonDocument configJson;
     MyBLE2 *myBLE;
+    VoltMater *voltMater;
+    void reset();
 
 public:
     PubSubClient *client;
 
     String topic = "junichi/M5Core2/";
 
-    MyMqtt2(PubSubClient *client_, MyBLE2 *myBLE_);
+    MyMqtt2(PubSubClient *client_, MyBLE2 *myBLE_, VoltMater *voltMater_);
     void setup(JsonDocument configJson);
     void callback(char *topic, byte *payload, unsigned int length);
-    int reConnect();
+    void reConnect();
     void subscribe(String topic);
     void publish(String topic, String message);
     void publishJson(String topic, JsonDocument json, bool retain);

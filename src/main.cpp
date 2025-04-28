@@ -38,6 +38,8 @@
 // #include "MyLcd.hpp"
 #include "MyLcd2.hpp"
 
+#include "VoltMater.hpp"
+
 using namespace MyLOG;
 
 // #include <JbdBms.h>
@@ -94,9 +96,12 @@ unsigned int rebootLimit = 10;
 // BLE
 MyBLE2 myBLE(&configJson);
 
+// Volt Mater
+VoltMater voltMater;
+
 // MQTT
 PubSubClient mqttClient(wifiClient);
-MyMqtt2 mqttClient2(&mqttClient, &myBLE);
+MyMqtt2 mqttClient2(&mqttClient, &myBLE, &voltMater);
 
 // LCD
 MyLcd2 myLcd;
@@ -189,7 +194,7 @@ int wifiConnect()
   }
 }
 
-String getValues()
+String getValues(MyBLE2 myBLE)
 {
   String jsonStr = "";
   jsonStr.reserve(300);
@@ -297,30 +302,6 @@ String reset()
 
 void loadConfig()
 {
-  /*
-  if (!SD.begin(5))
-  {
-    LOGD(TAG, "SD Card Mount Failed");
-    return;
-  }
-  //
-  LOGD(TAG, "SD Card initalized");
-  String fileName = "/";
-  fileName += CONFIG_FILE;
-  LOGD(TAG, "opeing file from SD Card in read mode");
-  File myFile = SD.open(fileName, FILE_READ); // Open the file "/config.json" in read mode.
-  if (!myFile)
-  {
-    LOGD(TAG, "error opening /config.json"); // If the file is not open.
-    return;
-  }
-  String textStr = "";
-  while (myFile.available())
-  {
-    textStr = textStr + myFile.readString();
-  }
-  myFile.close();
-  */
   String fileName = "/";
   fileName += CONFIG_FILE;
   String textStr = "";
@@ -339,24 +320,6 @@ void loadConfig()
     numberOfTemperature = numberOfTemperature_;
     myBLE.numberOfTemperature = numberOfTemperature_;
   }
-
-  /*
-  int channelId_ = configJson["ambient"]["channelId"];
-  if (channelId_)
-    channelId = channelId_;
-  const char *writeKey_ = configJson["ambient"]["writeKey"];
-  if (*writeKey_)
-  {
-    writeKey = writeKey_;
-    LOGD(TAG, "writeKey: " + writeKey);
-  }
-  int ambientSendIntervalBaseMs_ = configJson["ambient"]["ambientSendIntervalBaseMs"];
-  if (ambientSendIntervalBaseMs_)
-  {
-    ambientSendIntervalBaseMs = ambientSendIntervalBaseMs_;
-    ambientSendIntervalMs = ambientSendIntervalBaseMs;
-  }
-  */
 
   int sleepVoltageMv_ = configJson["sleepVoltageMv"];
   if (sleepVoltageMv_)
@@ -475,6 +438,21 @@ void myDeepSleep(int sec) // link error
   M5.Axp.DeepSleep(SLEEP_SEC(sec));
 }
 
+/*
+void showMainBatteryVoltage(ADS1115 voltMater)
+{
+  int16_t adc_raw = voltMater.getSingleConversion();
+  float voltage = adc_raw * resolution * calibration_factor;
+  char str[128];
+  sprintf(str, "Cal ADC:%.0f", adc_raw * calibration_factor);
+  LOGD(TAG, str);
+  sprintf(str, "Cal Voltage:%.2f mV", voltage);
+  LOGD(TAG, str);
+  sprintf(str, "Raw ADC:%d\n", adc_raw);
+  LOGD(TAG, str);
+}
+*/
+
 void setup()
 {
   M5.begin(); // Init M5Core2.
@@ -529,17 +507,6 @@ void setup()
   WiFi.mode(WIFI_STA);
   WiFi.hostname("JunBMS");
 
-  /* static IP address setup
-  const IPAddress local_IP(192, 168, 0, 45);
-  const IPAddress gateway(192, 168, 0, 1);
-  const IPAddress DNS(192, 168, 0, 1);
-  const IPAddress subnet(255, 255, 255, 0);
-  if (!WiFi.config(local_IP, gateway, subnet, DNS))
-  {
-    LOGD(TAG, "Failed to configure!");
-  }
-  */
-
   // Add list of wifi networks
   for (int i = 0; i < configJson["wifi"].size(); i++)
   {
@@ -572,22 +539,8 @@ void setup()
   server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send(SPIFFS, "/favicon.ico"); });
 
-  /*
-  server.on("/justgage/raphael.min.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(LittleFS, "/raphael.min.js"); });
-
-  server.on("/justgage/justgage.js", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(LittleFS, "/justgage.js"); });
-
-  server.on("/log.txt", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(LittleFS, "/log.txt"); });
-
-  server.on("/poi/index.json", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(SD, "/PersonalPOI/index.json"); });
-
-  */
   server.on("/getValues", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "appicatlion/json", getValues().c_str()); });
+            { request->send_P(200, "appicatlion/json", getValues(myBLE).c_str()); });
 
   server.on("/disconnectBLE", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send_P(200, "text/plain", disconnectBLE().c_str()); });
@@ -638,28 +591,39 @@ void setup()
   // LOGD(TAG, "ambient setup done");
 
   // MQTT setup
-  /*
-  String mqttServerConf = configJson["MQTT"]["server"];
-  if (mqttServerConf != "null")
-    mqtt_server = mqttServerConf;
-  LOGD(TAG, "MQTT Server: " + mqtt_server);
-  int mqqtPortConf = configJson["MQTT"]["port"];
-  if (mqqtPortConf)
-    mqtt_port = mqqtPortConf;
-  LOGD(TAG, "MQTT Server port: " + mqtt_port);
-  String mqttTopicConf = configJson["MQTT"]["topic"];
-  if (mqttTopicConf != "null")
-    mqtt_topic = mqttTopicConf;
-  LOGD(TAG, "MQTT Topic: " + mqtt_topic);
-  // MyMqtt::setup(&mqttClient, mqtt_server, mqtt_port, mqtt_topic);
-  */
-
+  M5.Lcd.println("MQTT setting up!");
   mqttClient2.setup(configJson);
 
   // Home aAssistant discoverry
+  M5.Lcd.println("Publishing HA discvery.");
   mqttClient2.publishHaDiscovery();
 
   M5.Lcd.println("MQTT setup done!");
+
+  // Volt meter setup
+  /*
+  while (!voltMater.begin(&Wire, M5_UNIT_VMETER_I2C_ADDR, 32, 33, 400000U))
+  {
+    Serial.println("Unit voltMater Init Fail");
+    delay(1000);
+  }
+  voltMater.setEEPROMAddr(M5_UNIT_VMETER_EEPROM_I2C_ADDR);
+  voltMater.setMode(ADS1115_MODE_SINGLESHOT);
+  voltMater.setRate(ADS1115_RATE_8);
+  voltMater.setGain(ADS1115_PGA_512);
+  // | PGA      | Max Input Voltage(V) |
+  // | PGA_6144 |        128           |
+  // | PGA_4096 |        64            |
+  // | PGA_2048 |        32            |
+  // | PGA_512  |        16            |
+  // | PGA_256  |        8             |
+
+  resolution = voltMater.getCoefficient() / M5_UNIT_VMETER_PRESSURE_COEFFICIENT;
+  calibration_factor = voltMater.getFactoryCalibration();
+  */
+  voltMater.setup(configJson);
+  LOGD(TAG, "Volt Mater setup done");
+  M5.Lcd.println("Volt Mater setup done!");
 
   //  setup BLE
   LOGD(TAG, "going to setup BLE");
@@ -708,8 +672,10 @@ void loop()
     DISABLE_LOGD = false;
 
     mqttClient2.publishJson("stat/" + mqttClient2.topic + "STATE", mqttClient2.getState2(), true);
+    mqttClient2.publishJson("stat/" + mqttClient2.topic + "STATE", voltMater.getVoltage(), true);
+    voltMater.lastMeasurment = millis();
 
-    myLcd.showBatteryInfo(myBLE.packBasicInfo.Volts / 1000.0f, myBLE.packBasicInfo.Amps / 1000.0f, myBLE.packCellInfo.CellDiff / 1.0f, myBLE.packBasicInfo.Temp1 / 10.0f, myBLE.packBasicInfo.Temp2 / 10.0f, myBLE.packBasicInfo.CapacityRemainPercent);
+    myLcd.showBatteryInfo(myBLE.packBasicInfo.Volts / 1000.0f, myBLE.packBasicInfo.Amps / 1000.0f, myBLE.packCellInfo.CellDiff / 1.0f, myBLE.packBasicInfo.Temp1 / 10.0f, voltMater.calVoltage, myBLE.packBasicInfo.CapacityRemainPercent);
   }
   if (myBLE.packBasicInfo.Volts <= sleepVoltageMv && WiFi.isConnected())
   {
@@ -733,15 +699,6 @@ void loop()
     if (WiFi.isConnected())
     {
       /*
-      if (!MyMqtt::connected())
-      {
-        if (MyMqtt::reConnect())
-          reset();
-      }
-      MyMqtt::loop();
-      */
-
-      //
       if (!mqttClient2.connected())
       {
         if (mqttClient2.reConnect())
@@ -751,8 +708,8 @@ void loop()
           reset();
         }
       }
+      */
       mqttClient2.loop();
-      //
     }
   }
   if (myBLE.packBasicInfo.Volts > wakeUpVoltageMv && !WiFi.isConnected())
@@ -771,17 +728,6 @@ void loop()
     {
       wifiConnect();
     }
-    /*
-    ambientClient.set(1, myBLE.packBasicInfo.Volts / 1000.0f);
-    ambientClient.set(2, myBLE.packBasicInfo.Amps / 1000.0f);
-    ambientClient.set(3, myBLE.packCellInfo.CellDiff / 1.0f);
-    ambientClient.set(4, myBLE.packBasicInfo.Temp1 / 10.0f);
-    if (numberOfTemperature == 2)
-      ambientClient.set(4, (myBLE.packBasicInfo.Temp1 + myBLE.packBasicInfo.Temp2) / 2 / 10.0f);
-    ambientClient.send();
-    ambientlLastSent = millis();
-    */
-
     float values[7];
     values[0] = myBLE.packBasicInfo.Volts / 1000.0f;
     values[1] = myBLE.packBasicInfo.Amps / 1000.0f;
@@ -796,42 +742,25 @@ void loop()
     ambientClient2.send();
     ambientClient2.ambientlLastSent = millis();
 
-    // MyLcd::showBatteryInfo(myBLE.packBasicInfo.Volts / 1000.0f, myBLE.packBasicInfo.Amps / 1000.0f, myBLE.packCellInfo.CellDiff / 1.0f, myBLE.packBasicInfo.Temp1 / 10.0f, myBLE.packBasicInfo.Temp2 / 10.0f, myBLE.packBasicInfo.CapacityRemainPercent);
-    //myLcd.showBatteryInfo(myBLE.packBasicInfo.Volts / 1000.0f, myBLE.packBasicInfo.Amps / 1000.0f, myBLE.packCellInfo.CellDiff / 1.0f, myBLE.packBasicInfo.Temp1 / 10.0f, myBLE.packBasicInfo.Temp2 / 10.0f, myBLE.packBasicInfo.CapacityRemainPercent);
+    mqttClient2.publishJson("stat/" + mqttClient2.topic + "STATE", voltMater.getVoltage(), true);
+    voltMater.lastMeasurment = millis();
 
-    //String msgStr = mqttClient2.getState();
+    // MyLcd::showBatteryInfo(myBLE.packBasicInfo.Volts / 1000.0f, myBLE.packBasicInfo.Amps / 1000.0f, myBLE.packCellInfo.CellDiff / 1.0f, myBLE.packBasicInfo.Temp1 / 10.0f, myBLE.packBasicInfo.Temp2 / 10.0f, myBLE.packBasicInfo.CapacityRemainPercent);
+    // myLcd.showBatteryInfo(myBLE.packBasicInfo.Volts / 1000.0f, myBLE.packBasicInfo.Amps / 1000.0f, myBLE.packCellInfo.CellDiff / 1.0f, myBLE.packBasicInfo.Temp1 / 10.0f, myBLE.packBasicInfo.Temp2 / 10.0f, myBLE.packBasicInfo.CapacityRemainPercent);
+
+    // String msgStr = mqttClient2.getState();
 
     // MQTT publish
-    /*
-    if (!MyMqtt::connected())
-    {
-      if (MyMqtt::reConnect())
-        reset();
-    }
-    // mqttClient.loop();
-    MyMqtt::publish("stat/" + mqtt_topic + "STATE", msgStr);
-    //
 
-    //
-    if (!mqttClient2.connected())
-    {
-      if (mqttClient2.reConnect())
-      {
-        mqttClient2.publish("stat/" + mqttClient2.topic + "STATE", "resetting system because of reconnecting MQTT server failed.");
-        delay(2000);
-        reset();
-      }
-    }
-    */
     // mqttClient.loop();
-    //mqttClient2.publish("stat/" + mqttClient2.topic + "STATE", msgStr);
+    // mqttClient2.publish("stat/" + mqttClient2.topic + "STATE", msgStr);
 
     // String logStr = "ambient sent, channelId: " + String(channelId) + ", message: " + msgStr;
     // LOGD(TAG, logStr);
     //  LOGLCD(TAG, logStr);
-    //String logStr = "MQTT publised, topic: stat/" + mqttClient2.topic + "STATE";
-    //logStr = logStr + ", message: " + msgStr;
-    //LOGD(TAG, logStr);
+    // String logStr = "MQTT publised, topic: stat/" + mqttClient2.topic + "STATE";
+    // logStr = logStr + ", message: " + msgStr;
+    // LOGD(TAG, logStr);
     // LOGLCD(TAG, logStr);
     //
 
@@ -852,5 +781,10 @@ void loop()
     }
     else
       LOGD(TAG, "PackVoltage: " + String(myBLE.packBasicInfo.Volts) + " > " + String(deepSleepVoltageMv));
+  }
+  if (voltMater.timeout(millis()))
+  {
+    mqttClient2.publishJson("stat/" + mqttClient2.topic + "STATE", voltMater.getVoltage(), true);
+    voltMater.lastMeasurment = millis();
   }
 }

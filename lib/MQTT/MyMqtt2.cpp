@@ -32,16 +32,14 @@ JsonDocument MyMqtt2::getState2()
     doc["batteryChargePercentage"] = String(myBLE->packBasicInfo.CapacityRemainPercent);
     doc["chargeStatus"] = String(myBLE->packBasicInfo.MosfetStatus & 1);
     doc["dischargeStatus"] = String((myBLE->packBasicInfo.MosfetStatus & 2) >> 1);
+    JsonDocument doc2 = voltMater->getVoltage();
+    doc["calVoltage"] = doc2["calVoltage"];
     doc["lipoVoltage"] = String(M5.Axp.GetBatVoltage());
     doc["lipoCurrent"] = String(M5.Axp.GetBatCurrent());
-    doc["sleepVoltage"] = configJson["sleepVoltage"];
-    doc["wakeUpVoltageMv"] = configJson["wakeUpVoltageMv"];
-    doc["deepSleepVoltageMv"] = configJson["deepSleepVoltageMv"];
-    doc["deepSleepTimeSec"] = configJson["deepSleepTimeSec"];
-    doc["ambientSendIntervalBaseMs"] = configJson["ambient"]["ambientSendIntervalBaseMs"];
     return doc;
 }
 
+/*
 String MyMqtt2::getLipoState()
 {
     String msgStr = "{\"deviceName\": " + myBLE->deviceNameStr;
@@ -67,6 +65,7 @@ String MyMqtt2::getConfiguration()
     msgStr += "}";
     return msgStr;
 }
+*/
 
 JsonDocument MyMqtt2::getBmsState()
 {
@@ -80,6 +79,8 @@ JsonDocument MyMqtt2::getBmsState()
     doc["batteryChargePercentage"] = String(myBLE->packBasicInfo.CapacityRemainPercent);
     doc["chargeStatus"] = String(myBLE->packBasicInfo.MosfetStatus & 1);
     doc["dischargeStatus"] = String((myBLE->packBasicInfo.MosfetStatus & 2) >> 1);
+    JsonDocument doc2 = voltMater->getVoltage();
+    doc["calVoltage"] = doc2["calVoltage"];
     doc["lipoVoltage"] = String(M5.Axp.GetBatVoltage());
     doc["lipoCurrent"] = String(M5.Axp.GetBatCurrent());
     doc["sleepVoltage"] = configJson["sleepVoltage"];
@@ -91,72 +92,32 @@ JsonDocument MyMqtt2::getBmsState()
 }
 
 void MyMqtt2::publishHaDiscovery()
- {
-     String topic = "homeassistant/device/junichiBMS_0/config";
-     JsonDocument payload;
-     payload["device"]["ids"] = "junichiBMS_0";
-     payload["device"]["name"] = "junichiBMS_0";
-     payload["device"]["mf"] = "M5Stack";
-     payload["device"]["hw"] = "1.0rev2";
-     payload["o"]["name"] = "1.0rev2";
-     payload["o"]["sw"] = "1.0rev2";
-     payload["o"]["url"] = "1.0rev2";
-     payload["cmps"]["some_unique_component_id1"]["p"] = "sensor";
-     payload["device"]["hw"] = "1.0rev2";
- 
- 
-     String payloadStr = "{\"dev\":{";
-     payloadStr += "\"ids\":\"junichiBMS_0\"";
-     payloadStr += ",\"name\":\"junichiBMS_0\"";
-     payloadStr += ",\"mf\":\"M5Stack\"";
-     payloadStr += ",\"hw\":\"1.0rev2\"";
-     payloadStr += "},";
-     payloadStr += "\"o\":{";
-     payloadStr += "\"name\":\" bla2mqtt\"";
-     payloadStr += ",\"sw\":\" 2.1\",";
-     payloadStr += "\"url\":\"https://bla2mqtt.example.com/support\"";
-     payloadStr += "},";
-     payloadStr += "\"cmps\":{";
-     payloadStr += "\"some_unique_component_id1\":{";
-     payloadStr += "\"p\":\"sensor\",";
-     payloadStr += "\"device_class\":\"voltage\",";
-     payloadStr += "\"unit_of_measurement\":\"V\",";
-     payloadStr += "\"value_template\":\"{{ value_json.batteryVoltage}}\",";
-     payloadStr += "\"unique_id\":\"volt01ae_v\"},";
-     payloadStr += "\"some_unique_component_id2\":{";
-     payloadStr += "\"p\":\"sensor\",";
-     payloadStr += "\"device_class\":\"temperature\",";
-     payloadStr += "\"unit_of_measurement\":\"°C\",";
-     payloadStr += "\"value_template\":\"{{ value_json.batteryTemp1}}\",";
-     payloadStr += "\"unique_id\":\"temp01ae_h\"}},";
-     payloadStr += "\"state_topic\":\"stat/junichi/M5Core2/STATE\",";
-     payloadStr += "\"qos\":2";
-     payloadStr += "}";
-     if (configJson["mqtt"]["discoveryTopic"] && configJson["mqtt"]["discoveryPayload"])
-     {
-         LOGD(TAG, "using discovery topic and payload from config.json");
-         String topic_ = configJson["mqtt"]["discoveryTopic"];
-         topic = topic_;
-         payload = configJson["mqtt"]["discoveryPayload"];
-     }
-     else
-     {
-         LOGD(TAG, "using default discovery topic and payload");
-         DeserializationError error = deserializeJson(payload, payloadStr.c_str());
-         if (error)
-         {
-             LOGD(TAG, "Deserialization error: " + payloadStr);
-             return;
-         }
-     }
-     LOGD(TAG, "publishing for HA discovery......");
-     publishJson(topic, payload, true);
- }
+{
+    String discoveryTopic = "homeassistant/device/";
+    JsonDocument discoveryPayload;
 
-MyMqtt2::MyMqtt2(PubSubClient *client_, MyBLE2 *myBLE_)
+    if (configJson["mqtt"]["discoveryPayload"])
+    {
+        LOGD(TAG, "loading discovery payload from config.json");
+        discoveryTopic = discoveryTopic + topic + "config";
+        discoveryPayload = configJson["mqtt"]["discoveryPayload"];
+        discoveryPayload["state_topic"] = "stat/" + topic + "STATE";
+        discoveryPayload["components"]["charge_switch"]["command_topic"] = "cmnd/" + topic + "charge";
+        discoveryPayload["components"]["discharge_switch"]["command_topic"] = "cmnd/" + topic + "discharge";
+    }
+    else
+    {
+        LOGD(TAG, "using default discovery topic and payload");
+    }
+    LOGD(TAG, "publishing for HA discovery......");
+    publishJson(discoveryTopic, discoveryPayload, true);
+}
+
+MyMqtt2::MyMqtt2(PubSubClient *client_, MyBLE2 *myBLE_, VoltMater *voltMater_)
 {
     client = client_;
     myBLE = myBLE_;
+    voltMater = voltMater_;
 }
 
 void MyMqtt2::setup(JsonDocument configJson_)
@@ -238,17 +199,17 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
     if (String(topic_).equals("cmnd/" + topic + "getBmsState"))
     {
         LOGD(TAG, "responding to getBmsState!");
-        publishJson("stat/" + topic + "RESULT", getBmsState(), true);
-        publishJson("stat/" + topic + "STATE", getBmsState(), true);
+        publishJson("stat/" + topic + "RESULT", getBmsState(), false);
+        publishJson("stat/" + topic + "STATE", getBmsState(), false);
         return;
     }
     if (String(topic_).equals("cmnd/" + topic + "getState"))
     {
         LOGD(TAG, "responding to getState!");
-        publish(("stat/" + topic + "RESULT").c_str(), getState().c_str());
-
+        publishJson(("stat/" + topic + "RESULT").c_str(), getState2(), false);
         return;
     }
+    /*
     if (String(topic_).equals("cmnd/" + topic + "getLipoState"))
     {
         LOGD(TAG, "responding to getLipoState!");
@@ -263,6 +224,7 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
 
         return;
     }
+    */
     if (String(topic_).equals("cmnd/" + topic + "shutdown"))
     {
         LOGD(TAG, "responding to shutdown!");
@@ -350,8 +312,9 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
             LOGD(TAG, "responding to discharge!");
             publish(("stat/" + topic + "DISCARGE").c_str(), msgStr.c_str());
         }
-        msgStr = "{\"chargeStatus\": " + String(chargeStatus) + ", \"didchargeStatus\": " + String(dischargeStatus) + "}";
+        msgStr = "{\"chargeStatus\": " + String(chargeStatus) + ", \"dischargeStatus\": " + String(dischargeStatus) + "}";
         publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
+        publish(("stat/" + topic + "STATE").c_str(), msgStr.c_str());
         return;
     }
     JsonDocument megJson;
@@ -364,10 +327,10 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
     // msgJson process here
 }
 
-int MyMqtt2::reConnect()
+void MyMqtt2::reConnect()
 {
     LOGD(TAG, "reConnect() called");
-    int i = 0;
+    int i = 1;
     while (!client->connected())
     {
         LOGD(TAG, "Attempting MQTT connection...");
@@ -375,10 +338,8 @@ int MyMqtt2::reConnect()
         String clientId = "M5Stack-";
         clientId += String(random(0xffff), HEX);
         // Attempt to connect.
-        LOGD(TAG, "1.................................");
         bool isConnected = client->connect(clientId.c_str(), user.c_str(), password.c_str());
         LOGD(TAG, "user: " + user + ", password: " + password);
-        LOGD(TAG, "2.................................");
         // if (client->connect(clientId.c_str()))
         if (isConnected)
         {
@@ -390,34 +351,51 @@ int MyMqtt2::reConnect()
             topicStr = "cmnd/" + topic + "#";
             client->subscribe(topicStr.c_str());
             // Home aAssistant discoverry
-            //publishHaDiscovery(); //this makes reconnect fail loop
-            return 0;
+            // publishHaDiscovery(); //this makes reconnect fail loop
+            return;
         }
         else
         {
-            String logStr = "failed, rc = ";
-            logStr = logStr + (client->state());
-            logStr = " try again in 5 seconds";
-            LOGLCD(TAG, logStr);
-            delay(5000);
+            String logStr = String(i) + ": ";
+            logStr += "failed reconnecting, rc = ";
+            logStr += client->state();
+            LOGD(TAG, logStr);
+            if (i == 10)
+            {
+                LOGD(TAG, "failed to reConnect 10 times.");
+                disabled = true;
+                reset();
+            }
+            if (i == 5)
+            {
+                LOGD(TAG, "failed to reConnect 5 times. Use the second server");
+                String mqttServerConf2 = configJson["mqtt"]["server2"];
+                if (mqttServerConf2 != "null")
+                {
+                    server = mqttServerConf2;
+                    LOGD(TAG, "MQTT changed server: " + server);
+                }
+                client->setServer(server.c_str(), port);
+            }
+            i++;
+            LOGD(TAG, "try to reconnect again in 1 seconds");
+            delay(1000);
         }
-        if (i > 10)
-        {
-            LOGD(TAG, "failed to reConnect 10 times.");
-            return 1;
-        }
-        i++;
     }
-    return 0;
+    return;
 }
 
 void MyMqtt2::subscribe(String topic)
 {
+    if (disabled)
+        return;
     client->subscribe(topic.c_str());
 }
 
 void MyMqtt2::publish(String topic, String message)
 {
+    if (disabled)
+        return;
     LOGD(TAG, "publishing >>>>> topic: " + topic + ", message: " + message);
     if (!client->connected())
     {
@@ -431,6 +409,8 @@ void MyMqtt2::publish(String topic, String message)
 
 void MyMqtt2::publishJson(String topic, JsonDocument doc, bool retained)
 {
+    if (disabled)
+        return;
     String jsonStr;
     serializeJson(doc, jsonStr);
     LOGD(TAG, "publishing Json >>>>> topic: " + topic + ", payload: " + jsonStr);
@@ -457,7 +437,19 @@ bool MyMqtt2::connected()
 
 void MyMqtt2::loop()
 {
+    if (!client->connected())
+    {
+        reConnect();
+    }
     client->loop();
+}
+
+void MyMqtt2::reset()
+{
+  LOGD(TAG, "going to reset in 5 sec");
+  delay(5000);
+  // ESP.restart();
+  M5.shutdown(10);
 }
 
 #endif /* MY_MQTT2_CPP */
