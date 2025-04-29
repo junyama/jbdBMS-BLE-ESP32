@@ -34,12 +34,16 @@ using namespace MyLOG;
 // BLEUUID charUUID_tx("0000ff02-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module //m
 // BLEUUID charUUID_rx("0000ff01-0000-1000-8000-00805f9b34fb"); // xiaoxiang bms original module //m
 
-
-MyBLE2::MyBLE2(JsonDocument *configJson_)
-: configJson(configJson_)
+MyBLE2::MyBLE2()
 {
 }
 
+/*
+MyBLE2::MyBLE2(JsonDocument *configJson_)
+    : configJson(configJson_)
+{
+}
+*/
 
 int16_t MyBLE2::two_ints_into16(int highbyte, int lowbyte) // turns two bytes into a single long integer
 {
@@ -425,7 +429,6 @@ void MyBLE2::bmsMosfetCtrl()
         printStr += str;
     }
     LOGD(TAG, printStr + " sent");
-    
 }
 
 void MyBLE2::printBasicInfo() // debug all data to uart
@@ -539,7 +542,7 @@ bool MyBLE2::connectToServer()
 
     if (pRemoteCharacteristic->canNotify())
         pRemoteCharacteristic->registerForNotify([this](BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify)
-                       { notifyCallback(pBLERemoteCharacteristic, pData, length, isNotify); });
+                                                 { notifyCallback(pBLERemoteCharacteristic, pData, length, isNotify); });
 
     return myClientCallback->BLE_client_connected = true;
 }

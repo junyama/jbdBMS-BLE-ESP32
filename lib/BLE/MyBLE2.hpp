@@ -91,9 +91,11 @@ private:
     // void bmsEnableDischarge();
     void bmsMosfetCtrl();
 
-    JsonDocument *configJson;
+    // JsonDocument *configJson;
 
 public:
+    JsonDocument *configJson;
+
     byte ctrlCommand = 0;
     byte commandParam = 0;
     MyAdvertisedDeviceCallbacks *myAdvertisedDeviceCallbacks;
@@ -117,7 +119,8 @@ public:
     int numberOfTemperature = 2;
 
     // MyBLE();
-    MyBLE2(JsonDocument *configJson_);
+    MyBLE2();
+    //MyBLE2(JsonDocument *configJson_);
     void printBasicInfo(); // debug all data to uart
     void printCellInfo();  // debug all data to uart
     void bleStartup();

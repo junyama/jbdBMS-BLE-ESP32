@@ -94,14 +94,15 @@ unsigned int rebootCount = 0;
 unsigned int rebootLimit = 10;
 
 // BLE
-MyBLE2 myBLE(&configJson);
+MyBLE2 myBLE;
+MyBLE2 *myBleArr = new MyBLE2[2];
 
 // Volt Mater
 VoltMater voltMater;
 
 // MQTT
 PubSubClient mqttClient(wifiClient);
-MyMqtt2 mqttClient2(&mqttClient, &myBLE, &voltMater);
+MyMqtt2 mqttClient2(&mqttClient, wifiClient, &myBLE, &voltMater);
 
 // LCD
 MyLcd2 myLcd;
@@ -194,78 +195,78 @@ int wifiConnect()
   }
 }
 
-String getValues(MyBLE2 myBLE)
+String getValues(int deviceId)
 {
   String jsonStr = "";
   jsonStr.reserve(300);
   jsonStr += "{\"batteryTemp1\": ";
-  jsonStr += String(myBLE.packBasicInfo.Temp1);
+  jsonStr += String(myBleArr[deviceId].packBasicInfo.Temp1);
   jsonStr += ", \"batteryTemp2\": ";
   if (numberOfTemperature == 2)
-    jsonStr += String(myBLE.packBasicInfo.Temp2);
+    jsonStr += String(myBleArr[deviceId].packBasicInfo.Temp2);
   // else
-  // jsonStr += String(myBLEpackBasicInfo.Temp1);
+  // jsonStr += String(myBleArr[deviceId]packBasicInfo.Temp1);
   jsonStr += ", \"batteryChargePercentage\": ";
-  jsonStr += String(myBLE.packBasicInfo.CapacityRemainPercent);
+  jsonStr += String(myBleArr[deviceId].packBasicInfo.CapacityRemainPercent);
   jsonStr += ", \"batteryCurrent\": ";
-  jsonStr += String(myBLE.packBasicInfo.Amps / 10);
+  jsonStr += String(myBleArr[deviceId].packBasicInfo.Amps / 10);
   // jsonStr += ", \"batteryCycleCount\": ";
   // jsonStr += String(batteryCycleCount);
   jsonStr += ", \"batteryVoltage\": ";
-  jsonStr += String(myBLE.packBasicInfo.Volts / 10);
+  jsonStr += String(myBleArr[deviceId].packBasicInfo.Volts / 10);
   jsonStr += ", \"mosfetStatus\": {\"chargeStatus\": ";
-  chargeStatus = myBLE.packBasicInfo.MosfetStatus & 1;
+  chargeStatus = myBleArr[deviceId].packBasicInfo.MosfetStatus & 1;
   jsonStr += String(chargeStatus);
   jsonStr += ", \"dischargeStatus\": ";
-  // dischargeStatus = myBLE.packBasicInfo.MosfetStatus & 1 << 1;
-  dischargeStatus = (myBLE.packBasicInfo.MosfetStatus & 2) >> 1;
+  // dischargeStatus = myBleArr[deviceId].packBasicInfo.MosfetStatus & 1 << 1;
+  dischargeStatus = (myBleArr[deviceId].packBasicInfo.MosfetStatus & 2) >> 1;
   jsonStr += String(dischargeStatus);
   jsonStr += "}, \"batteryList\": [";
-  jsonStr += String(myBLE.packCellInfo.CellVolt[0]);
-  for (int i = 1; i < myBLE.packCellInfo.NumOfCells; i++)
+  jsonStr += String(myBleArr[deviceId].packCellInfo.CellVolt[0]);
+  for (int i = 1; i < myBleArr[deviceId].packCellInfo.NumOfCells; i++)
   {
     jsonStr += ", ";
-    jsonStr += String(myBLE.packCellInfo.CellVolt[i]);
+    jsonStr += String(myBleArr[deviceId].packCellInfo.CellVolt[i]);
   }
   jsonStr += "]";
   jsonStr += ", \"batteryDiff\": ";
-  jsonStr += String(myBLE.packCellInfo.CellDiff);
-  for (int i = 0; i < myBLE.packCellInfo.NumOfCells; i++)
+  jsonStr += String(myBleArr[deviceId].packCellInfo.CellDiff);
+  for (int i = 0; i < myBleArr[deviceId].packCellInfo.NumOfCells; i++)
   {
-    cellBalanceList[i] = myBLE.packBasicInfo.BalanceCodeLow & 1 << i;
+    cellBalanceList[i] = myBleArr[deviceId].packBasicInfo.BalanceCodeLow & 1 << i;
   }
   jsonStr += ", \"cellBalanceList\": [";
   jsonStr += String(cellBalanceList[0]);
-  for (int i = 1; i < myBLE.packCellInfo.NumOfCells; i++)
+  for (int i = 1; i < myBleArr[deviceId].packCellInfo.NumOfCells; i++)
   {
     jsonStr += ", ";
     jsonStr += String(cellBalanceList[i]);
   }
   jsonStr += "]";
   jsonStr += ", \"cellMedian\": ";
-  jsonStr += String(myBLE.packCellInfo.CellMedian);
+  jsonStr += String(myBleArr[deviceId].packCellInfo.CellMedian);
   jsonStr += ", \"BLEConnected\": ";
-  jsonStr += String(myBLE.myClientCallback->BLE_client_connected);
+  jsonStr += String(myBleArr[deviceId].myClientCallback->BLE_client_connected);
   // jsonStr += String(BLE_client_connected);
   jsonStr += "}";
   return jsonStr;
 }
 
-String disconnectBLE()
+String disconnectBLE(int deviceId)
 {
-  myBLE.ctrlCommand = 2;
+  myBleArr[deviceId].ctrlCommand = 2;
   return "OK";
 }
 
-String requestDeviceName()
+String requestDeviceName(int deviceId)
 {
-  myBLE.ctrlCommand = 3;
+  myBleArr[deviceId].ctrlCommand = 3;
   return "OK";
 }
 
-String getDeviceName()
+String getDeviceName(int deviceId)
 {
-  return myBLE.deviceNameStr;
+  return myBleArr[deviceId].deviceNameStr;
 }
 
 void getDeviceNameLoop()
@@ -540,16 +541,16 @@ void setup()
             { request->send(SPIFFS, "/favicon.ico"); });
 
   server.on("/getValues", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "appicatlion/json", getValues(myBLE).c_str()); });
+            { request->send_P(200, "appicatlion/json", getValues(0).c_str()); });
 
   server.on("/disconnectBLE", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "text/plain", disconnectBLE().c_str()); });
+            { request->send_P(200, "text/plain", disconnectBLE(0).c_str()); });
 
   server.on("/requestDeviceName", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "text/plain", requestDeviceName().c_str()); });
+            { request->send_P(200, "text/plain", requestDeviceName(0).c_str()); });
 
   server.on("/getDeviceName", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send_P(200, "text/plain", getDeviceName().c_str()); });
+            { request->send_P(200, "text/plain", getDeviceName(0).c_str()); });
 
   server.on("/reset", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send_P(200, "text/plain", reset().c_str()); });
@@ -583,6 +584,13 @@ void setup()
   // ambientClient2 = ambientClient2_; //not working
   ambientClient2.begin(configJson, &wifiClient);
 
+  // setup myBleArr
+  myBLE.configJson = &configJson;
+  for (int i = 0; i < 2; i++)
+  {
+    myBleArr[i].configJson = &configJson;
+  }
+
   // initalize pack volt not to disconnect WiFi
   myBLE.packBasicInfo.Volts = 15000;
   // ambientlLastSent = millis() + 100000;
@@ -592,7 +600,7 @@ void setup()
 
   // MQTT setup
   M5.Lcd.println("MQTT setting up!");
-  mqttClient2.setup(configJson);
+  mqttClient2.setup(wifiClient, configJson);
 
   // Home aAssistant discoverry
   M5.Lcd.println("Publishing HA discvery.");
@@ -601,26 +609,6 @@ void setup()
   M5.Lcd.println("MQTT setup done!");
 
   // Volt meter setup
-  /*
-  while (!voltMater.begin(&Wire, M5_UNIT_VMETER_I2C_ADDR, 32, 33, 400000U))
-  {
-    Serial.println("Unit voltMater Init Fail");
-    delay(1000);
-  }
-  voltMater.setEEPROMAddr(M5_UNIT_VMETER_EEPROM_I2C_ADDR);
-  voltMater.setMode(ADS1115_MODE_SINGLESHOT);
-  voltMater.setRate(ADS1115_RATE_8);
-  voltMater.setGain(ADS1115_PGA_512);
-  // | PGA      | Max Input Voltage(V) |
-  // | PGA_6144 |        128           |
-  // | PGA_4096 |        64            |
-  // | PGA_2048 |        32            |
-  // | PGA_512  |        16            |
-  // | PGA_256  |        8             |
-
-  resolution = voltMater.getCoefficient() / M5_UNIT_VMETER_PRESSURE_COEFFICIENT;
-  calibration_factor = voltMater.getFactoryCalibration();
-  */
   voltMater.setup(configJson);
   LOGD(TAG, "Volt Mater setup done");
   M5.Lcd.println("Volt Mater setup done!");

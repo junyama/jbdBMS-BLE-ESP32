@@ -113,15 +113,21 @@ void MyMqtt2::publishHaDiscovery()
     publishJson(discoveryTopic, discoveryPayload, true);
 }
 
-MyMqtt2::MyMqtt2(PubSubClient *client_, MyBLE2 *myBLE_, VoltMater *voltMater_)
+MyMqtt2::MyMqtt2()
+{
+}
+
+MyMqtt2::MyMqtt2(PubSubClient *client_, WiFiClient wifiClient, MyBLE2 *myBLE_, VoltMater *voltMater_)
 {
     client = client_;
+    // client = new PubSubClient(wifiClient); //does not work
     myBLE = myBLE_;
     voltMater = voltMater_;
 }
 
-void MyMqtt2::setup(JsonDocument configJson_)
+void MyMqtt2::setup(WiFiClient wifiClient, JsonDocument configJson_)
 {
+    //client = new PubSubClient(wifiClient); // does not work
     LOGD(TAG, "Setting MQTT parameters ..........");
     configJson = configJson_;
     String mqttServerConf = configJson["mqtt"]["server"];
@@ -446,10 +452,10 @@ void MyMqtt2::loop()
 
 void MyMqtt2::reset()
 {
-  LOGD(TAG, "going to reset in 5 sec");
-  delay(5000);
-  // ESP.restart();
-  M5.shutdown(10);
+    LOGD(TAG, "going to reset in 5 sec");
+    delay(5000);
+    // ESP.restart();
+    M5.shutdown(10);
 }
 
 #endif /* MY_MQTT2_CPP */

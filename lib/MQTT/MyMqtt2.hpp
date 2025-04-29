@@ -34,8 +34,9 @@ public:
 
     String topic = "junichi/M5Core2/";
 
-    MyMqtt2(PubSubClient *client_, MyBLE2 *myBLE_, VoltMater *voltMater_);
-    void setup(JsonDocument configJson);
+    MyMqtt2();
+    MyMqtt2(PubSubClient *client_, WiFiClient wifiClient, MyBLE2 *myBLE_, VoltMater *voltMater_);
+    void setup(WiFiClient wifiClient, JsonDocument configJson);
     void callback(char *topic, byte *payload, unsigned int length);
     void reConnect();
     void subscribe(String topic);
