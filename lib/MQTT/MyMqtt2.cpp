@@ -117,6 +117,7 @@ MyMqtt2::MyMqtt2()
 {
 }
 
+/*
 MyMqtt2::MyMqtt2(PubSubClient *client_, WiFiClient wifiClient, MyBLE2 *myBLE_, VoltMater *voltMater_)
 {
     client = client_;
@@ -124,11 +125,14 @@ MyMqtt2::MyMqtt2(PubSubClient *client_, WiFiClient wifiClient, MyBLE2 *myBLE_, V
     myBLE = myBLE_;
     voltMater = voltMater_;
 }
+*/
 
-void MyMqtt2::setup(WiFiClient wifiClient, JsonDocument configJson_)
+void MyMqtt2::setup(WiFiClient *wifiClient, MyBLE2 *myBLE_,  VoltMater *voltMater_, JsonDocument configJson_)
 {
-    //client = new PubSubClient(wifiClient); // does not work
     LOGD(TAG, "Setting MQTT parameters ..........");
+    client = new PubSubClient(*wifiClient);
+    myBLE = myBLE_;
+    voltMater = voltMater_;
     configJson = configJson_;
     String mqttServerConf = configJson["mqtt"]["server"];
     if (mqttServerConf != "null")

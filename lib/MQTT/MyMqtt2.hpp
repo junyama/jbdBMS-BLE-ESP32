@@ -26,6 +26,7 @@ private:
     int messageSizeLimit = 128;
     JsonDocument configJson;
     MyBLE2 *myBLE;
+    MyBLE2 *myBleArr;
     VoltMater *voltMater;
     void reset();
 
@@ -35,8 +36,8 @@ public:
     String topic = "junichi/M5Core2/";
 
     MyMqtt2();
-    MyMqtt2(PubSubClient *client_, WiFiClient wifiClient, MyBLE2 *myBLE_, VoltMater *voltMater_);
-    void setup(WiFiClient wifiClient, JsonDocument configJson);
+    //MyMqtt2(PubSubClient *client_, WiFiClient wifiClient, MyBLE2 *myBLE_, VoltMater *voltMater_);
+    void setup(WiFiClient *wifiClient, MyBLE2 *myBLE_,  VoltMater *voltMater_, JsonDocument configJson_);
     void callback(char *topic, byte *payload, unsigned int length);
     void reConnect();
     void subscribe(String topic);

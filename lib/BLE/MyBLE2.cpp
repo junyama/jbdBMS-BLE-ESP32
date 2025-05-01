@@ -16,7 +16,7 @@ using namespace MyLOG;
 // boolean doScan = false;
 
 // packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
-//  packEepromStruct packEeprom;       // here shall be the latest data got from BMS
+// packEepromStruct packEeprom;       // here shall be the latest data got from BMS
 // packCellInfoStruct packCellInfo; // here shall be the latest data got from BMS
 
 // static unsigned long previousMillis = 0;
@@ -493,12 +493,10 @@ bool MyBLE2::connectToServer()
 {
     // TRACE;
     LOGD(TAG, "Forming a connection to " + String(myAdvertisedDeviceCallbacks->myDevice->getAddress().toString().c_str()));
-    // lcdConnectingStatus(0);
     // LOGD(TAG, myDevice->getAddress().toString().c_str());
     pClient = BLEDevice::createClient();
     BLEClient *pClient = BLEDevice::createClient();
     LOGD(TAG, "Created client");
-    // lcdConnectingStatus(1);
     myClientCallback = new MyClientCallback();
     pClient->setClientCallbacks(myClientCallback);
     // pClient->setClientCallbacks(new MyClientCallback());
@@ -506,33 +504,28 @@ bool MyBLE2::connectToServer()
     // Connect to the remove BLE Server.
     pClient->connect(myAdvertisedDeviceCallbacks->myDevice); // if you pass BLEAdvertisedDevice instead of address, it will be recognized type of peer device address (public or private)
     LOGD(TAG, "Connected to server");
-    // lcdConnectingStatus(2);
     //  Obtain a reference to the service we are after in the remote BLE server.
     //  BLERemoteService*
     pRemoteService = pClient->getService(serviceUUID);
     if (pRemoteService == nullptr)
     {
         LOGD(TAG, "Failed to find our service UUID: ");
-        // lcdConnectingStatus(3);
         LOGD(TAG, serviceUUID.toString().c_str());
         pClient->disconnect();
         return false;
     }
     LOGD(TAG, "Found our service");
-    // lcdConnectingStatus(4);
 
     // Obtain a reference to the characteristic in the service of the remote BLE server.
     pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID_rx);
     if (pRemoteCharacteristic == nullptr)
     {
         LOGD(TAG, "Failed to find our characteristic UUID: ");
-        // lcdConnectingStatus(5);
         LOGD(TAG, charUUID_rx.toString().c_str());
         pClient->disconnect();
         return false;
     }
     LOGD(TAG, "Found our characteristic");
-    // lcdConnectingStatus(6);
     //  Read the value of the characteristic.
     if (pRemoteCharacteristic->canRead())
     {
@@ -544,7 +537,10 @@ bool MyBLE2::connectToServer()
         pRemoteCharacteristic->registerForNotify([this](BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify)
                                                  { notifyCallback(pBLERemoteCharacteristic, pData, length, isNotify); });
 
-    return myClientCallback->BLE_client_connected = true;
+    {
+        LOGD(TAG, "returnig with myClientCallback->BLE_client_connected = true");
+        return myClientCallback->BLE_client_connected = true;
+    }
 }
 
 void MyBLE2::disconnectFromServer() // does not work as intended, but automatically reconnected
