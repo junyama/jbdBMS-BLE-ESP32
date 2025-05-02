@@ -537,10 +537,7 @@ bool MyBLE2::connectToServer()
         pRemoteCharacteristic->registerForNotify([this](BLERemoteCharacteristic *pBLERemoteCharacteristic, uint8_t *pData, size_t length, bool isNotify)
                                                  { notifyCallback(pBLERemoteCharacteristic, pData, length, isNotify); });
 
-    {
-        LOGD(TAG, "returnig with myClientCallback->BLE_client_connected = true");
-        return myClientCallback->BLE_client_connected = true;
-    }
+    return myClientCallback->BLE_client_connected = true;
 }
 
 void MyBLE2::disconnectFromServer() // does not work as intended, but automatically reconnected
@@ -659,6 +656,24 @@ void MyBLE2::mosfetCtrl(int chargeStatus, int dischargeStatus)
     // LOGD(TAG, "/mosfetCtrl called");
     ctrlCommand = 1;
     commandParam = (byte)chargeStatus + (byte)dischargeStatus * 2;
+}
+
+void MyBLE2::getDeviceNameLoop()
+{
+    for (int i = 0; i < 20; i++)
+    {
+      bleRequestData();
+      if (newPacketReceived == true)
+      {
+        if (deviceNameStr)
+        {
+          LOGD(TAG, "deviceNameStr: " + deviceNameStr);
+          return;
+        }
+        LOGD(TAG, "deviceNameStr: null");
+        delay(500);
+      }
+    }
 }
 
 #endif /* MY_BLE2_CPP_ */

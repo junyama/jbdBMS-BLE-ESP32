@@ -131,6 +131,7 @@ public:
     // void bmsDisableCharge();
     // void bmsEnableCharge();
     void mosfetCtrl(int chargeStatus, int dischargeStatus);
+    void getDeviceNameLoop();
 };
 
 #endif /* MY_BLE2_HPP */
