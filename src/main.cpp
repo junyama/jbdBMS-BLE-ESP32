@@ -498,7 +498,7 @@ void setup()
     String logStr = "going to deep sleep because exceeding reboot limit (" + String(rebootLimit) + "). Wake up in " + String(deepSleepTimeSec) + "sec";
     LOGD(TAG, logStr);
     myLcd.println(logStr);
-    mqttClient2.publish("stat/" + mqttClient2.topic + "STATE", logStr);
+    mqttClient2.publish("stat/" + configJson["mqtt"]["topic"] + "STATE", logStr);
     delay(3000);
     // PowerSaving::enable();
     powerSaving.enable();
@@ -545,25 +545,18 @@ void setup()
   // setup webAPIs
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send(SPIFFS, "/index.html"); });
-
   server.on("/favicon.ico", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send(SPIFFS, "/favicon.ico"); });
-
   server.on("/getValues", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send_P(200, "appicatlion/json", getValues(0).c_str()); });
-
   server.on("/disconnectBLE", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send_P(200, "text/plain", disconnectBLE(0).c_str()); });
-
   server.on("/requestDeviceName", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send_P(200, "text/plain", requestDeviceName(0).c_str()); });
-
   server.on("/getDeviceName", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send_P(200, "text/plain", getDeviceName(0).c_str()); });
-
   server.on("/reset", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send_P(200, "text/plain", reset().c_str()); });
-
   AsyncCallbackJsonWebHandler *handler = new AsyncCallbackJsonWebHandler("/mosfetCtrl", [](AsyncWebServerRequest *request, JsonVariant &json)
                                                                          {
     //LOGD(TAG, "/mosfetCtrl called");
@@ -573,7 +566,6 @@ void setup()
     LOGD(TAG, "posted json: " + jsonStr);
     myBleArr[0].ctrlCommand = 1;
     myBleArr[0].commandParam = (byte)jsonObj["chargeStatus"] + (byte)jsonObj["dischargeStatus"] * 2;
-
     //request->send(200, "application/json", "{\"message\": \"OK\"}");
     AsyncJsonResponse *response = new AsyncJsonResponse();
     JsonObject root = response->getRoot();
@@ -581,19 +573,11 @@ void setup()
     root["chargeStatus"] = chargeStatus;
     response->setLength();
     request->send(response); });
-
   server.addHandler(handler);
-
   server.begin();
 
+  //Ambient setup
   ambientClient2.begin(configJson, &wifiClient);
-
-  // initalize pack volt not to disconnect WiFi
-  // myBLE.packBasicInfo.Volts = 15000;
-  // ambientlLastSent = millis() + 100000;
-  // ambientlLastSent = 0;
-  // LOGD(TAG, "ambientlLastSent initial value: " + String(ambientlLastSent));
-  // LOGD(TAG, "ambient setup done");
 
   // MQTT setup
   M5.Lcd.println("MQTT setting up!");
@@ -621,8 +605,10 @@ void setup()
   LOGD(TAG, "going to setup BLE Array");
   for (int i = 0; i < NUMBER_OF_DEVICES; i++)
   {
-    Serial.printf("\n\nmyBleArr[%d] =========================================================================\n", i);
+    Serial.printf("\n\nmyBleArr[%d] ---------------------------------------------------------\n", i);
     new (myBleArr + i) MyBLE2();
+    myBleArr[i].deviceConfig = configJson["devices"][i];
+
     myBleArr[i].configJson = &configJson;
     myBleArr[i].numberOfTemperature = configJson["numberOfTemperature"];
     myBleArr[i].packBasicInfo.Volts = 15000;
@@ -674,8 +660,8 @@ void loop()
       myBleArr[deviceId].printCellInfo();
       DISABLE_LOGD = false;
 
-      mqttClient2.publishJson("stat/" + mqttClient2.topic + "STATE", mqttClient2.getState2(), true);
-      mqttClient2.publishJson("stat/" + mqttClient2.topic + "STATE", voltMater.getVoltage(), true);
+      mqttClient2.publishJson("stat/" + myBleArr[deviceId].deviceTopic + "STATE", mqttClient2.getState2(), true);
+      mqttClient2.publishJson("stat/" + myBleArr[deviceId].deviceTopic + "STATE", voltMater.getVoltage(), true);
       voltMater.lastMeasurment = millis();
 
       myLcd.showBatteryInfo(myBleArr[deviceId].packBasicInfo.Volts / 1000.0f, myBleArr[deviceId].packBasicInfo.Amps / 1000.0f, myBleArr[deviceId].packCellInfo.CellDiff / 1.0f, myBleArr[deviceId].packBasicInfo.Temp1 / 10.0f, voltMater.calVoltage, myBleArr[deviceId].packBasicInfo.CapacityRemainPercent);
@@ -684,7 +670,7 @@ void loop()
     {
       String logStr = "disconnecting WiFi, batteryVoltage: " + String(myBleArr[deviceId].packBasicInfo.Volts) + " <= " + String(sleepVoltageMv);
       LOGD(TAG, logStr);
-      mqttClient2.publish("stat/" + mqttClient2.topic + "STATE", logStr);
+      mqttClient2.publish("stat/" + mqttClient2.hostTopic + "STATE", logStr);
       delay(2000);
       WiFi.disconnect(true);
       delay(3000);
@@ -739,7 +725,7 @@ void loop()
       ambientClient2.send();
       ambientClient2.ambientlLastSent = millis();
 
-      mqttClient2.publishJson("stat/" + mqttClient2.topic + "STATE", voltMater.getVoltage(), true);
+      mqttClient2.publishJson("stat/" + mqttClient2.hostTopic + "STATE", voltMater.getVoltage(), true);
       voltMater.lastMeasurment = millis();
 
       if (myBleArr[deviceId].packBasicInfo.Volts <= deepSleepVoltageMv)
@@ -747,7 +733,7 @@ void loop()
         String logStr = "Going to deep sleep now and wake up in " + String(deepSleepTimeSec) + " seconds";
         LOGD(TAG, logStr);
         myLcd.println(logStr);
-        mqttClient2.publish("stat/" + mqttClient2.topic + "STATE", logStr);
+        mqttClient2.publish("stat/" + mqttClient2.hostTopic + "STATE", logStr);
         delay(2500);
         // esp_deep_sleep_start(); //link error
         // M5.Axp.DeepSleep(SLEEP_SEC(5)); // link error
@@ -762,7 +748,7 @@ void loop()
     }
     if (voltMater.timeout(millis()))
     {
-      mqttClient2.publishJson("stat/" + mqttClient2.topic + "STATE", voltMater.getVoltage(), true);
+      mqttClient2.publishJson("stat/" + mqttClient2.hostTopic + "STATE", voltMater.getVoltage(), true);
       voltMater.lastMeasurment = millis();
     }
   }

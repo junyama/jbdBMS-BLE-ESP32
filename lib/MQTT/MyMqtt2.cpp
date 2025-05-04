@@ -93,24 +93,23 @@ JsonDocument MyMqtt2::getBmsState()
 
 void MyMqtt2::publishHaDiscovery()
 {
-    String discoveryTopic = "homeassistant/device/";
+    String deviceTopic;
     JsonDocument discoveryPayload;
-
-    if (configJson["mqtt"]["discoveryPayload"])
+    for (int i = 0; i < 1; i++)
     {
-        LOGD(TAG, "loading discovery payload from config.json");
-        discoveryTopic = discoveryTopic + topic + "config";
-        discoveryPayload = configJson["mqtt"]["discoveryPayload"];
-        discoveryPayload["state_topic"] = "stat/" + topic + "STATE";
-        discoveryPayload["components"]["charge_switch"]["command_topic"] = "cmnd/" + topic + "charge";
-        discoveryPayload["components"]["discharge_switch"]["command_topic"] = "cmnd/" + topic + "discharge";
+        LOGD(TAG, String(i) + ": loading discovery payload from config.json");
+        deviceTopic = configJson["devices"][i]["mqtt"]["topic"];
+        discoveryPayload = configJson["devices"][i]["mqtt"]["discoveryPayload"];
+        if (deviceTopic != "")
+        {
+            LOGD(TAG, "publishing for HA discovery......");
+            publishJson("homeassistant/device/" + deviceTopic + "config", discoveryPayload, true);
+        }
+        else
+        {
+            LOGD(TAG, "topic and discovery payload of " + deviceTopic + " are not defined at config.json");
+        }
     }
-    else
-    {
-        LOGD(TAG, "using default discovery topic and payload");
-    }
-    LOGD(TAG, "publishing for HA discovery......");
-    publishJson(discoveryTopic, discoveryPayload, true);
 }
 
 MyMqtt2::MyMqtt2()
@@ -127,7 +126,7 @@ MyMqtt2::MyMqtt2(PubSubClient *client_, WiFiClient wifiClient, MyBLE2 *myBLE_, V
 }
 */
 
-void MyMqtt2::setup(WiFiClient *wifiClient, MyBLE2 *myBLE_,  VoltMater *voltMater_, JsonDocument configJson_)
+void MyMqtt2::setup(WiFiClient *wifiClient, MyBLE2 *myBLE_, VoltMater *voltMater_, JsonDocument configJson_)
 {
     LOGD(TAG, "Setting MQTT parameters ..........");
     client = new PubSubClient(*wifiClient);
@@ -150,6 +149,7 @@ void MyMqtt2::setup(WiFiClient *wifiClient, MyBLE2 *myBLE_,  VoltMater *voltMate
     }
     else
         LOGD(TAG, "MQTT server default port: " + String(port));
+    /*
     String mqttTopicConf = configJson["mqtt"]["topic"];
     if (mqttTopicConf != "null")
     {
@@ -158,6 +158,7 @@ void MyMqtt2::setup(WiFiClient *wifiClient, MyBLE2 *myBLE_,  VoltMater *voltMate
     }
     else
         LOGD(TAG, "MQTT default Topic: " + topic);
+    */
     String mqttUserConf = configJson["mqtt"]["user"];
     if (mqttUserConf != "null")
     {
@@ -205,40 +206,104 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
     logStr = logStr + msgStr;
     LOGD(TAG, logStr);
     LOGLCD(TAG, logStr);
-
-    if (String(topic_).equals("cmnd/" + topic + "getBmsState"))
+    for (int deviceId = 0; deviceId < 1; deviceId++)
     {
-        LOGD(TAG, "responding to getBmsState!");
-        publishJson("stat/" + topic + "RESULT", getBmsState(), false);
-        publishJson("stat/" + topic + "STATE", getBmsState(), false);
-        return;
+        String deviceTopic = configJson["devices"][deviceId]["mqtt"]["topic"];
+        if (String(topic_).equals("cmnd/" + deviceTopic + "getBmsState"))
+        {
+            LOGD(TAG, "responding to getBmsState!");
+            publishJson("stat/" + deviceTopic + "RESULT", getBmsState(), false);
+            publishJson("stat/" + deviceTopic + "STATE", getBmsState(), false);
+            return;
+        }
+        if (String(topic_).equals("cmnd/" + deviceTopic + "getState"))
+        {
+            LOGD(TAG, "responding to getState!");
+            publishJson(("stat/" + deviceTopic + "RESULT").c_str(), getState2(), false);
+            return;
+        }
+        if ((String(topic_).equals("cmnd/" + deviceTopic + "charge")) || ((String(topic_).equals("cmnd/" + deviceTopic + "discharge"))))
+        {
+            if (String(topic_).equals("cmnd/" + deviceTopic + "charge"))
+            {
+                LOGD(TAG, "charge status: " + String(chargeStatus) + ", discharge status: " + String(dischargeStatus));
+                if (msgStr.equals(""))
+                {
+                    if (chargeStatus)
+                        msgStr = "ON";
+                    else
+                        msgStr = "OFF";
+                }
+                else if (msgStr.equals("0"))
+                {
+                    myBLE->mosfetCtrl(0, dischargeStatus);
+                    chargeStatus = 0;
+                    msgStr = "OFF";
+                }
+                else if (msgStr.equals("1"))
+                {
+                    myBLE->mosfetCtrl(1, dischargeStatus);
+                    chargeStatus = 1;
+                    msgStr = "ON";
+                }
+                else if (msgStr.equals("toggle"))
+                {
+                    myBLE->mosfetCtrl((chargeStatus ^ 1), dischargeStatus);
+                    chargeStatus = chargeStatus ^ 1;
+                    msgStr = "TOGGLE";
+                }
+                else
+                {
+                    msgStr = "INVALID";
+                }
+                LOGD(TAG, "responding to charge!");
+                publish(("stat/" + deviceTopic + "CHARGE").c_str(), msgStr.c_str());
+            }
+            else if (String(topic_).equals("cmnd/" + deviceTopic + "discharge"))
+            {
+                LOGD(TAG, "charge status: " + String(chargeStatus) + ", discharge status: " + String(dischargeStatus));
+                if (msgStr.equals(""))
+                {
+                    if (dischargeStatus)
+                        msgStr = "ON";
+                    else
+                        msgStr = "OFF";
+                }
+                else if (msgStr.equals("0"))
+                {
+                    myBLE->mosfetCtrl(chargeStatus, 0);
+                    dischargeStatus = 0;
+                    msgStr = "OFF";
+                }
+                else if (msgStr.equals("1"))
+                {
+                    myBLE->mosfetCtrl(chargeStatus, 1);
+                    dischargeStatus = 1;
+                    msgStr = "ON";
+                }
+                else if (msgStr.equals("toggle"))
+                {
+                    myBLE->mosfetCtrl(chargeStatus, (dischargeStatus ^ 1));
+                    dischargeStatus = dischargeStatus ^ 1;
+                    msgStr = "TOGGLE";
+                }
+                else
+                {
+                    msgStr = "INVALID";
+                }
+                LOGD(TAG, "responding to discharge!");
+                publish(("stat/" + deviceTopic + "DISCARGE").c_str(), msgStr.c_str());
+            }
+            msgStr = "{\"chargeStatus\": " + String(chargeStatus) + ", \"dischargeStatus\": " + String(dischargeStatus) + "}";
+            publish(("stat/" + deviceTopic + "RESULT").c_str(), msgStr.c_str());
+            publish(("stat/" + deviceTopic + "STATE").c_str(), msgStr.c_str());
+            return;
+        }
     }
-    if (String(topic_).equals("cmnd/" + topic + "getState"))
-    {
-        LOGD(TAG, "responding to getState!");
-        publishJson(("stat/" + topic + "RESULT").c_str(), getState2(), false);
-        return;
-    }
-    /*
-    if (String(topic_).equals("cmnd/" + topic + "getLipoState"))
-    {
-        LOGD(TAG, "responding to getLipoState!");
-        publish(("stat/" + topic + "RESULT").c_str(), getLipoState().c_str());
-
-        return;
-    }
-    if (String(topic_).equals("cmnd/" + topic + "getConfiguration"))
-    {
-        LOGD(TAG, "responding to getConfiguration!");
-        publish(("stat/" + topic + "RESULT").c_str(), getConfiguration().c_str());
-
-        return;
-    }
-    */
-    if (String(topic_).equals("cmnd/" + topic + "shutdown"))
+    if (String(topic_).equals("cmnd/" + configJson["mqtt"]["topic"] + "shutdown"))
     {
         LOGD(TAG, "responding to shutdown!");
-        publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
+        publish(("stat/" + configJson["mqtt"]["topic"] + "RESULT").c_str(), msgStr.c_str());
         delay(2000);
         int sec;
         if (msgStr == "")
@@ -248,83 +313,6 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
             sec = msgStr.toInt();
             M5.shutdown(sec);
         }
-        return;
-    }
-    if ((String(topic_).equals("cmnd/" + topic + "charge")) || ((String(topic_).equals("cmnd/" + topic + "discharge"))))
-    {
-        if (String(topic_).equals("cmnd/" + topic + "charge"))
-        {
-            LOGD(TAG, "charge status: " + String(chargeStatus) + ", discharge status: " + String(dischargeStatus));
-            if (msgStr.equals(""))
-            {
-                if (chargeStatus)
-                    msgStr = "ON";
-                else
-                    msgStr = "OFF";
-            }
-            else if (msgStr.equals("0"))
-            {
-                myBLE->mosfetCtrl(0, dischargeStatus);
-                chargeStatus = 0;
-                msgStr = "OFF";
-            }
-            else if (msgStr.equals("1"))
-            {
-                myBLE->mosfetCtrl(1, dischargeStatus);
-                chargeStatus = 1;
-                msgStr = "ON";
-            }
-            else if (msgStr.equals("toggle"))
-            {
-                myBLE->mosfetCtrl((chargeStatus ^ 1), dischargeStatus);
-                chargeStatus = chargeStatus ^ 1;
-                msgStr = "TOGGLE";
-            }
-            else
-            {
-                msgStr = "INVALID";
-            }
-            LOGD(TAG, "responding to charge!");
-            publish(("stat/" + topic + "CHARGE").c_str(), msgStr.c_str());
-        }
-        else if (String(topic_).equals("cmnd/" + topic + "discharge"))
-        {
-            LOGD(TAG, "charge status: " + String(chargeStatus) + ", discharge status: " + String(dischargeStatus));
-            if (msgStr.equals(""))
-            {
-                if (dischargeStatus)
-                    msgStr = "ON";
-                else
-                    msgStr = "OFF";
-            }
-            else if (msgStr.equals("0"))
-            {
-                myBLE->mosfetCtrl(chargeStatus, 0);
-                dischargeStatus = 0;
-                msgStr = "OFF";
-            }
-            else if (msgStr.equals("1"))
-            {
-                myBLE->mosfetCtrl(chargeStatus, 1);
-                dischargeStatus = 1;
-                msgStr = "ON";
-            }
-            else if (msgStr.equals("toggle"))
-            {
-                myBLE->mosfetCtrl(chargeStatus, (dischargeStatus ^ 1));
-                dischargeStatus = dischargeStatus ^ 1;
-                msgStr = "TOGGLE";
-            }
-            else
-            {
-                msgStr = "INVALID";
-            }
-            LOGD(TAG, "responding to discharge!");
-            publish(("stat/" + topic + "DISCARGE").c_str(), msgStr.c_str());
-        }
-        msgStr = "{\"chargeStatus\": " + String(chargeStatus) + ", \"dischargeStatus\": " + String(dischargeStatus) + "}";
-        publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
-        publish(("stat/" + topic + "STATE").c_str(), msgStr.c_str());
         return;
     }
     JsonDocument megJson;
@@ -355,11 +343,15 @@ void MyMqtt2::reConnect()
         {
             LOGD(TAG, "Connected.");
             // Once connected, publish an announcement to the topic.
-            String topicStr = "stat/" + topic + "STATE";
+            String topicStr = "stat/" + configJson["mqtt"]["topic"] + "STATE";
             publish(topicStr.c_str(), "MQTT reconnected");
             // ... and resubscribe.
-            topicStr = "cmnd/" + topic + "#";
-            client->subscribe(topicStr.c_str());
+            for (int deviceId = 0; deviceId < 1; deviceId++)
+            {
+                String deviceTopic = configJson["devices"][deviceId]["mqtt"]["topic"];
+                topicStr = "cmnd/" + deviceTopic + "#";
+                client->subscribe(topicStr.c_str());
+            }
             // Home aAssistant discoverry
             // publishHaDiscovery(); //this makes reconnect fail loop
             return;

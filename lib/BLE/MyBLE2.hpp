@@ -97,6 +97,8 @@ private:
 
 public:
     JsonDocument *configJson;
+    JsonDocument deviceConfig;
+    String deviceTopic;
 
     byte ctrlCommand = 0;
     byte commandParam = 0;

@@ -33,7 +33,7 @@ private:
 public:
     PubSubClient *client;
 
-    String topic = "junichi/M5Core2/";
+    String hostTopic = "junichiM5Core2/";
 
     MyMqtt2();
     //MyMqtt2(PubSubClient *client_, WiFiClient wifiClient, MyBLE2 *myBLE_, VoltMater *voltMater_);
