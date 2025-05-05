@@ -1,8 +1,6 @@
 #ifndef MY_BLE2_HPP
 #define MY_BLE2_HPP
 
-#define NUMBER_OF_DEVICES 1
-
 #include <Arduino.h>
 #include <ArduinoJson.h>
 
@@ -97,6 +95,7 @@ private:
 
 public:
     JsonDocument *configJson;
+    String deviceTopic = "junichiBMS_X/";
 
     byte ctrlCommand = 0;
     byte commandParam = 0;

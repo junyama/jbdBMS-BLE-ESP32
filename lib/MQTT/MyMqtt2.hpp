@@ -25,7 +25,7 @@ private:
     String password = "mqttpass";
     int messageSizeLimit = 128;
     JsonDocument configJson;
-    MyBLE2 *myBLE;
+    //MyBLE2 *myBLE;
     MyBLE2 *myBleArr;
     VoltMater *voltMater;
     void reset();
@@ -33,11 +33,13 @@ private:
 public:
     PubSubClient *client;
 
-    String topic = "junichi/M5Core2/";
+    //String topic = "junichi/M5Core2/";
+    String hostTopic = "junichiM5Core2/";
+    int numberOfDevices = 2;
 
     MyMqtt2();
     //MyMqtt2(PubSubClient *client_, WiFiClient wifiClient, MyBLE2 *myBLE_, VoltMater *voltMater_);
-    void setup(WiFiClient *wifiClient, MyBLE2 *myBLE_,  VoltMater *voltMater_, JsonDocument configJson_);
+    void setup(WiFiClient *wifiClient, MyBLE2 *myBLE_,  MyBLE2 *myBleArr_, VoltMater *voltMater_, JsonDocument configJson_);
     void callback(char *topic, byte *payload, unsigned int length);
     void reConnect();
     void subscribe(String topic);
@@ -45,11 +47,12 @@ public:
     void publishJson(String topic, JsonDocument json, bool retain);
     bool connected();
     void loop();
-    String getState();
-    JsonDocument getState2();
-    String getLipoState();
-    String getConfiguration();
-    JsonDocument getBmsState();
+    //String getState();
+    JsonDocument getState(int deviceId);
+    //JsonDocument getState2();
+    //String getLipoState();
+    //String getConfiguration();
+    JsonDocument getBmsState(int deviceId);
     void publishHaDiscovery();
 };
 

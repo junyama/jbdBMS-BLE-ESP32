@@ -5,6 +5,7 @@
 
 using namespace MyLOG;
 
+/*
 String MyMqtt2::getState()
 {
     String msgStr = "{\"deviceName\": " + myBLE->deviceNameStr;
@@ -19,7 +20,28 @@ String MyMqtt2::getState()
     msgStr += "}";
     return msgStr;
 }
+*/
 
+JsonDocument MyMqtt2::getState(int deviceId)
+{
+    JsonDocument doc;
+    doc["deviceName"] = myBleArr[deviceId].deviceNameStr;
+    doc["batteryVoltage"] = String(myBleArr[deviceId].packBasicInfo.Volts / 1000.0);
+    doc["batteryCurrent"] = String(myBleArr[deviceId].packBasicInfo.Amps / 1000.0);
+    doc["batteryTemp1"] = String(myBleArr[deviceId].packBasicInfo.Temp1 / 10.0);
+    if (configJson["numberOfTemperature"] == 2)
+        doc["batteryTemp2"] = String(myBleArr[deviceId].packBasicInfo.Temp2 / 10.0);
+    doc["batteryChargePercentage"] = String(myBleArr[deviceId].packBasicInfo.CapacityRemainPercent);
+    doc["chargeStatus"] = String(myBleArr[deviceId].packBasicInfo.MosfetStatus & 1);
+    doc["dischargeStatus"] = String((myBleArr[deviceId].packBasicInfo.MosfetStatus & 2) >> 1);
+    JsonDocument doc2 = voltMater->getVoltage();
+    doc["calVoltage"] = doc2["calVoltage"];
+    doc["lipoVoltage"] = String(M5.Axp.GetBatVoltage());
+    doc["lipoCurrent"] = String(M5.Axp.GetBatCurrent());
+    return doc;
+}
+
+/*
 JsonDocument MyMqtt2::getState2()
 {
     JsonDocument doc;
@@ -38,47 +60,20 @@ JsonDocument MyMqtt2::getState2()
     doc["lipoCurrent"] = String(M5.Axp.GetBatCurrent());
     return doc;
 }
-
-/*
-String MyMqtt2::getLipoState()
-{
-    String msgStr = "{\"deviceName\": " + myBLE->deviceNameStr;
-    msgStr += ", \"lipoVoltage\": " + String(M5.Axp.GetBatVoltage());
-    msgStr += ", \"lipoCurrent\": " + String(M5.Axp.GetBatCurrent());
-    msgStr += "}";
-    return msgStr;
-}
-
-String MyMqtt2::getConfiguration()
-{
-    String msgStr = "{\"deviceName\": " + myBLE->deviceNameStr;
-    String sleepVoltage = configJson["sleepVoltage"];
-    msgStr += ", \"sleepVoltage\": " + sleepVoltage;
-    String wakeUpVoltageMv = configJson["wakeUpVoltageMv"];
-    msgStr += ", \"wakeUpVoltageMv\": " + wakeUpVoltageMv;
-    String deepSleepVoltageMv = configJson["deepSleepVoltageMv"];
-    msgStr += ", \"deepSleepVoltageMv\": " + deepSleepVoltageMv;
-    String deepSleepTimeSec = configJson["deepSleepTimeSec"];
-    msgStr += ", \"deepSleepTimeSec\": " + deepSleepTimeSec;
-    int ambientSendIntervalBaseMs = configJson["ambient"]["ambientSendIntervalBaseMs"];
-    msgStr += ", \"ambientSendIntervalBaseMs\": " + String(ambientSendIntervalBaseMs);
-    msgStr += "}";
-    return msgStr;
-}
 */
 
-JsonDocument MyMqtt2::getBmsState()
+JsonDocument MyMqtt2::getBmsState(int deviceId)
 {
     JsonDocument doc;
-    doc["deviceName"] = myBLE->deviceNameStr;
-    doc["batteryVoltage"] = String(myBLE->packBasicInfo.Volts / 1000.0);
-    doc["batteryCurrent"] = String(myBLE->packBasicInfo.Amps / 1000.0);
-    doc["batteryTemp1"] = String(myBLE->packBasicInfo.Temp1 / 10.0);
+    doc["deviceName"] = myBleArr[deviceId].deviceNameStr;
+    doc["batteryVoltage"] = String(myBleArr[deviceId].packBasicInfo.Volts / 1000.0);
+    doc["batteryCurrent"] = String(myBleArr[deviceId].packBasicInfo.Amps / 1000.0);
+    doc["batteryTemp1"] = String(myBleArr[deviceId].packBasicInfo.Temp1 / 10.0);
     if (configJson["numberOfTemperature"] == 2)
-        doc["batteryTemp2"] = String(myBLE->packBasicInfo.Temp2 / 10.0);
-    doc["batteryChargePercentage"] = String(myBLE->packBasicInfo.CapacityRemainPercent);
-    doc["chargeStatus"] = String(myBLE->packBasicInfo.MosfetStatus & 1);
-    doc["dischargeStatus"] = String((myBLE->packBasicInfo.MosfetStatus & 2) >> 1);
+        doc["batteryTemp2"] = String(myBleArr[deviceId].packBasicInfo.Temp2 / 10.0);
+    doc["batteryChargePercentage"] = String(myBleArr[deviceId].packBasicInfo.CapacityRemainPercent);
+    doc["chargeStatus"] = String(myBleArr[deviceId].packBasicInfo.MosfetStatus & 1);
+    doc["dischargeStatus"] = String((myBleArr[deviceId].packBasicInfo.MosfetStatus & 2) >> 1);
     JsonDocument doc2 = voltMater->getVoltage();
     doc["calVoltage"] = doc2["calVoltage"];
     doc["lipoVoltage"] = String(M5.Axp.GetBatVoltage());
@@ -93,45 +88,34 @@ JsonDocument MyMqtt2::getBmsState()
 
 void MyMqtt2::publishHaDiscovery()
 {
-    String discoveryTopic = "homeassistant/device/";
+    String discoveryTopic;
     JsonDocument discoveryPayload;
+    JsonArray deviceList = configJson["devices"].as<JsonArray>();
 
-    if (configJson["mqtt"]["discoveryPayload"])
+    LOGD(TAG, "loading discovery payload from config.json");
+    for (int deviceId = 0; deviceId < numberOfDevices; deviceId++)
     {
-        LOGD(TAG, "loading discovery payload from config.json");
-        discoveryTopic = discoveryTopic + topic + "config";
-        discoveryPayload = configJson["mqtt"]["discoveryPayload"];
-        discoveryPayload["state_topic"] = "stat/" + topic + "STATE";
-        discoveryPayload["components"]["charge_switch"]["command_topic"] = "cmnd/" + topic + "charge";
-        discoveryPayload["components"]["discharge_switch"]["command_topic"] = "cmnd/" + topic + "discharge";
+        JsonDocument deviceObj = deviceList[deviceId];
+        String topic = deviceObj["mqtt"]["topic"];
+        discoveryTopic = "homeassistant/device/" + topic + "config";
+        discoveryPayload = deviceObj["mqtt"]["discoveryPayload"];
+        LOGD(TAG, "publishing for HA discovery......");
+        publishJson(discoveryTopic, discoveryPayload, true);
+        LOGD(TAG, "setting myBleArr[" + String(deviceId) + "].deviceTopic " + topic);
+        myBleArr[deviceId].deviceTopic = topic;
     }
-    else
-    {
-        LOGD(TAG, "using default discovery topic and payload");
-    }
-    LOGD(TAG, "publishing for HA discovery......");
-    publishJson(discoveryTopic, discoveryPayload, true);
 }
 
 MyMqtt2::MyMqtt2()
 {
 }
 
-/*
-MyMqtt2::MyMqtt2(PubSubClient *client_, WiFiClient wifiClient, MyBLE2 *myBLE_, VoltMater *voltMater_)
-{
-    client = client_;
-    // client = new PubSubClient(wifiClient); //does not work
-    myBLE = myBLE_;
-    voltMater = voltMater_;
-}
-*/
-
-void MyMqtt2::setup(WiFiClient *wifiClient, MyBLE2 *myBLE_,  VoltMater *voltMater_, JsonDocument configJson_)
+void MyMqtt2::setup(WiFiClient *wifiClient, MyBLE2 *myBLE_, MyBLE2 *myBleArr_, VoltMater *voltMater_, JsonDocument configJson_)
 {
     LOGD(TAG, "Setting MQTT parameters ..........");
     client = new PubSubClient(*wifiClient);
-    myBLE = myBLE_;
+    //myBLE = myBLE_;
+    myBleArr = myBleArr_;
     voltMater = voltMater_;
     configJson = configJson_;
     String mqttServerConf = configJson["mqtt"]["server"];
@@ -153,11 +137,11 @@ void MyMqtt2::setup(WiFiClient *wifiClient, MyBLE2 *myBLE_,  VoltMater *voltMate
     String mqttTopicConf = configJson["mqtt"]["topic"];
     if (mqttTopicConf != "null")
     {
-        topic = mqttTopicConf;
-        LOGD(TAG, "MQTT changed Topic: " + topic);
+        hostTopic = mqttTopicConf;
+        LOGD(TAG, "MQTT changed hostTopic: " + hostTopic);
     }
     else
-        LOGD(TAG, "MQTT default Topic: " + topic);
+        LOGD(TAG, "MQTT default Topic: " + hostTopic);
     String mqttUserConf = configJson["mqtt"]["user"];
     if (mqttUserConf != "null")
     {
@@ -191,8 +175,8 @@ void MyMqtt2::setup(WiFiClient *wifiClient, MyBLE2 *myBLE_,  VoltMater *voltMate
 
 void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
 {
-    int chargeStatus = myBLE->packBasicInfo.MosfetStatus & 1;
-    int dischargeStatus = (myBLE->packBasicInfo.MosfetStatus & 2) >> 1;
+    int chargeStatus;
+    int dischargeStatus;
 
     String msgStr = "";
     for (int i = 0; i < length; i++)
@@ -206,39 +190,117 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
     LOGD(TAG, logStr);
     LOGLCD(TAG, logStr);
 
-    if (String(topic_).equals("cmnd/" + topic + "getBmsState"))
+    String deviceTopic;
+    for (int deviceId = 0; deviceId < numberOfDevices; deviceId++)
     {
-        LOGD(TAG, "responding to getBmsState!");
-        publishJson("stat/" + topic + "RESULT", getBmsState(), false);
-        publishJson("stat/" + topic + "STATE", getBmsState(), false);
-        return;
+        chargeStatus = myBleArr[deviceId].packBasicInfo.MosfetStatus & 1;
+        dischargeStatus = (myBleArr[deviceId].packBasicInfo.MosfetStatus & 2) >> 1;
+        deviceTopic = myBleArr[deviceId].deviceTopic;
+        LOGD(TAG, "myBleArr[" + String(deviceId) + "].deviceTopic: " + myBleArr[deviceId].deviceTopic);
+        if (String(topic_).equals("cmnd/" + deviceTopic + "getState"))
+        {
+            LOGD(TAG, "responding to getState!");
+            publishJson(("stat/" + deviceTopic + "RESULT").c_str(), getState(deviceId), false);
+            return;
+        }
+        if (String(topic_).equals("cmnd/" + deviceTopic + "getBmsState"))
+        {
+            LOGD(TAG, "responding to getBmsState!");
+            publishJson("stat/" + deviceTopic + "RESULT", getBmsState(deviceId), false);
+            publishJson("stat/" + deviceTopic + "STATE", getBmsState(deviceId), false);
+            return;
+        }
+        if (String(topic_).equals("cmnd/" + deviceTopic + "getState"))
+        {
+            LOGD(TAG, "responding to getState!");
+            publishJson(("stat/" + deviceTopic + "RESULT").c_str(), getState(deviceId), false);
+            return;
+        }
+        if ((String(topic_).equals("cmnd/" + deviceTopic + "charge")) || ((String(topic_).equals("cmnd/" + deviceTopic + "discharge"))))
+        {
+            if (String(topic_).equals("cmnd/" + deviceTopic + "charge"))
+            {
+                LOGD(TAG, "charge status: " + String(chargeStatus) + ", discharge status: " + String(dischargeStatus));
+                if (msgStr.equals(""))
+                {
+                    if (chargeStatus)
+                        msgStr = "ON";
+                    else
+                        msgStr = "OFF";
+                }
+                else if (msgStr.equals("0"))
+                {
+                    myBleArr[deviceId].mosfetCtrl(0, dischargeStatus);
+                    chargeStatus = 0;
+                    msgStr = "OFF";
+                }
+                else if (msgStr.equals("1"))
+                {
+                    myBleArr[deviceId].mosfetCtrl(1, dischargeStatus);
+                    chargeStatus = 1;
+                    msgStr = "ON";
+                }
+                else if (msgStr.equals("toggle"))
+                {
+                    myBleArr[deviceId].mosfetCtrl((chargeStatus ^ 1), dischargeStatus);
+                    chargeStatus = chargeStatus ^ 1;
+                    msgStr = "TOGGLE";
+                }
+                else
+                {
+                    msgStr = "INVALID";
+                }
+                LOGD(TAG, "responding to charge!");
+                publish(("stat/" + deviceTopic + "CHARGE").c_str(), msgStr.c_str());
+            }
+            else if (String(topic_).equals("cmnd/" + deviceTopic + "discharge"))
+            {
+                LOGD(TAG, "charge status: " + String(chargeStatus) + ", discharge status: " + String(dischargeStatus));
+                if (msgStr.equals(""))
+                {
+                    if (dischargeStatus)
+                        msgStr = "ON";
+                    else
+                        msgStr = "OFF";
+                }
+                else if (msgStr.equals("0"))
+                {
+                    myBleArr[deviceId].mosfetCtrl(chargeStatus, 0);
+                    dischargeStatus = 0;
+                    msgStr = "OFF";
+                }
+                else if (msgStr.equals("1"))
+                {
+                    myBleArr[deviceId].mosfetCtrl(chargeStatus, 1);
+                    dischargeStatus = 1;
+                    msgStr = "ON";
+                }
+                else if (msgStr.equals("toggle"))
+                {
+                    myBleArr[deviceId].mosfetCtrl(chargeStatus, (dischargeStatus ^ 1));
+                    dischargeStatus = dischargeStatus ^ 1;
+                    msgStr = "TOGGLE";
+                }
+                else
+                {
+                    msgStr = "INVALID";
+                }
+                LOGD(TAG, "responding to discharge!");
+                publish(("stat/" + deviceTopic + "DISCARGE").c_str(), msgStr.c_str());
+            }
+            msgStr = "{\"chargeStatus\": " + String(chargeStatus) + ", \"dischargeStatus\": " + String(dischargeStatus) + "}";
+            publish(("stat/" + deviceTopic + "RESULT").c_str(), msgStr.c_str());
+            publish(("stat/" + deviceTopic + "STATE").c_str(), msgStr.c_str());
+            return;
+        }
     }
-    if (String(topic_).equals("cmnd/" + topic + "getState"))
-    {
-        LOGD(TAG, "responding to getState!");
-        publishJson(("stat/" + topic + "RESULT").c_str(), getState2(), false);
-        return;
-    }
-    /*
-    if (String(topic_).equals("cmnd/" + topic + "getLipoState"))
-    {
-        LOGD(TAG, "responding to getLipoState!");
-        publish(("stat/" + topic + "RESULT").c_str(), getLipoState().c_str());
 
-        return;
-    }
-    if (String(topic_).equals("cmnd/" + topic + "getConfiguration"))
-    {
-        LOGD(TAG, "responding to getConfiguration!");
-        publish(("stat/" + topic + "RESULT").c_str(), getConfiguration().c_str());
+    ///////////////
 
-        return;
-    }
-    */
-    if (String(topic_).equals("cmnd/" + topic + "shutdown"))
+    if (String(topic_).equals("cmnd/" + hostTopic + "shutdown"))
     {
         LOGD(TAG, "responding to shutdown!");
-        publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
+        publish(("stat/" + hostTopic + "RESULT").c_str(), msgStr.c_str());
         delay(2000);
         int sec;
         if (msgStr == "")
@@ -248,83 +310,6 @@ void MyMqtt2::callback(char *topic_, byte *payload, unsigned int length)
             sec = msgStr.toInt();
             M5.shutdown(sec);
         }
-        return;
-    }
-    if ((String(topic_).equals("cmnd/" + topic + "charge")) || ((String(topic_).equals("cmnd/" + topic + "discharge"))))
-    {
-        if (String(topic_).equals("cmnd/" + topic + "charge"))
-        {
-            LOGD(TAG, "charge status: " + String(chargeStatus) + ", discharge status: " + String(dischargeStatus));
-            if (msgStr.equals(""))
-            {
-                if (chargeStatus)
-                    msgStr = "ON";
-                else
-                    msgStr = "OFF";
-            }
-            else if (msgStr.equals("0"))
-            {
-                myBLE->mosfetCtrl(0, dischargeStatus);
-                chargeStatus = 0;
-                msgStr = "OFF";
-            }
-            else if (msgStr.equals("1"))
-            {
-                myBLE->mosfetCtrl(1, dischargeStatus);
-                chargeStatus = 1;
-                msgStr = "ON";
-            }
-            else if (msgStr.equals("toggle"))
-            {
-                myBLE->mosfetCtrl((chargeStatus ^ 1), dischargeStatus);
-                chargeStatus = chargeStatus ^ 1;
-                msgStr = "TOGGLE";
-            }
-            else
-            {
-                msgStr = "INVALID";
-            }
-            LOGD(TAG, "responding to charge!");
-            publish(("stat/" + topic + "CHARGE").c_str(), msgStr.c_str());
-        }
-        else if (String(topic_).equals("cmnd/" + topic + "discharge"))
-        {
-            LOGD(TAG, "charge status: " + String(chargeStatus) + ", discharge status: " + String(dischargeStatus));
-            if (msgStr.equals(""))
-            {
-                if (dischargeStatus)
-                    msgStr = "ON";
-                else
-                    msgStr = "OFF";
-            }
-            else if (msgStr.equals("0"))
-            {
-                myBLE->mosfetCtrl(chargeStatus, 0);
-                dischargeStatus = 0;
-                msgStr = "OFF";
-            }
-            else if (msgStr.equals("1"))
-            {
-                myBLE->mosfetCtrl(chargeStatus, 1);
-                dischargeStatus = 1;
-                msgStr = "ON";
-            }
-            else if (msgStr.equals("toggle"))
-            {
-                myBLE->mosfetCtrl(chargeStatus, (dischargeStatus ^ 1));
-                dischargeStatus = dischargeStatus ^ 1;
-                msgStr = "TOGGLE";
-            }
-            else
-            {
-                msgStr = "INVALID";
-            }
-            LOGD(TAG, "responding to discharge!");
-            publish(("stat/" + topic + "DISCARGE").c_str(), msgStr.c_str());
-        }
-        msgStr = "{\"chargeStatus\": " + String(chargeStatus) + ", \"dischargeStatus\": " + String(dischargeStatus) + "}";
-        publish(("stat/" + topic + "RESULT").c_str(), msgStr.c_str());
-        publish(("stat/" + topic + "STATE").c_str(), msgStr.c_str());
         return;
     }
     JsonDocument megJson;
@@ -355,10 +340,10 @@ void MyMqtt2::reConnect()
         {
             LOGD(TAG, "Connected.");
             // Once connected, publish an announcement to the topic.
-            String topicStr = "stat/" + topic + "STATE";
+            String topicStr = "stat/" + hostTopic + "STATE";
             publish(topicStr.c_str(), "MQTT reconnected");
             // ... and resubscribe.
-            topicStr = "cmnd/" + topic + "#";
+            topicStr = "cmnd/" + hostTopic + "#";
             client->subscribe(topicStr.c_str());
             // Home aAssistant discoverry
             // publishHaDiscovery(); //this makes reconnect fail loop
@@ -370,15 +355,15 @@ void MyMqtt2::reConnect()
             logStr += "failed reconnecting, rc = ";
             logStr += client->state();
             LOGD(TAG, logStr);
-            if (i == 10)
+            if (i == 5)
             {
-                LOGD(TAG, "failed to reConnect 10 times.");
+                LOGD(TAG, "failed to reConnect many times.");
                 disabled = true;
                 reset();
             }
-            if (i == 5)
+            if (i == 3)
             {
-                LOGD(TAG, "failed to reConnect 5 times. Use the second server");
+                LOGD(TAG, "failed to reConnect a few times. Use the second server");
                 String mqttServerConf2 = configJson["mqtt"]["server2"];
                 if (mqttServerConf2 != "null")
                 {

@@ -268,10 +268,6 @@
           "qos": 2
         }
       }
-    },
-    {
-      "mac": "4c:04:20:37:c1:a4",
-      "numberOfTemperature": 1
     }
   ]
 }
