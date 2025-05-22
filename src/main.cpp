@@ -939,6 +939,7 @@ void setup()
   //
   LOGD(TAG, "going to setup each device of deviceList");
   int bleIndex = 0;
+  bool bleServerNotFound = true;
   for (int deviceIndex = 0; deviceIndex < deviceList.size(); deviceIndex++)
   {
     Serial.printf("\nSet up device[%d] ===== BEGIN ====================================================\n", deviceIndex);
@@ -946,7 +947,7 @@ void setup()
     String type = deviceObj["type"];
     String topic = getDeviceTopic(deviceIndex);
     int numberOfTemperature = deviceObj["numberOfTemperature"];
-    if (type.equals("BMS"))
+    if (type.equals("BMS") && bleServerNotFound)
     {
       //  setup BLE
       String logStr = "Setting up BLE(" + String(bleIndex) + ")...";
@@ -978,6 +979,9 @@ void setup()
         String deviceName = myBleArr[bleIndex].getDeviceNameLoop();
         myLcd.bmsInfoArr[bleIndex].deviceName = deviceName + " (" + myBleArr[bleIndex].mac + ")";
         publishHaDiscovery2(deviceObj);
+        myBleArr[bleIndex].getDeviceNameLoop();
+        //bleServerNotFound = false; //not effective for connectionStatus issue
+        //LOGD(TAG, "BLE Server found exit scan --->>>>>>>>");
       }
       bleIndex++;
     }
