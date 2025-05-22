@@ -22,7 +22,7 @@ MyClientCallback::MyClientCallback(boolean *p_BLE_client_connected)
 
 void MyClientCallback::onConnect(BLEClient *pclient)
 {
-    digitalWrite(BLE_LED, HIGH);
+    //digitalWrite(BLE_LED, HIGH);
     LOGD(TAG, "onConnect");
 }
 
@@ -30,7 +30,7 @@ void MyClientCallback::onDisconnect(BLEClient *pclient)
 {
     //BLE_client_connected = false;
     BLE_client_connected = false;
-    digitalWrite(BLE_LED, LOW);
+    //digitalWrite(BLE_LED, LOW);
     LOGD(TAG, "onDisconnect");
     // lcdDisconnect();
 }

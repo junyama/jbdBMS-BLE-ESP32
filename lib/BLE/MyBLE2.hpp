@@ -73,7 +73,7 @@ private:
     void bmsGetInfo4();
     void bmsGetInfo5();
 
-    bool connectToServer();
+    //bool connectToServer();
     void sendCommand(uint8_t *data, uint32_t dataLen);
 
     // BLEAdvertisedDevice *myDevice;
@@ -94,8 +94,12 @@ private:
     // JsonDocument *configJson;
 
 public:
-    JsonDocument *configJson;
-    String deviceTopic = "junichiBMS_X/";
+    //JsonDocument *configJson;
+    bool enabled = false;
+    String mac;
+    String topic = "junichiBMS_X/";
+    int measurmentIntervalMs = 10000;
+    unsigned long lastMeasurment = 0;
 
     byte ctrlCommand = 0;
     byte commandParam = 0;
@@ -121,16 +125,22 @@ public:
 
     // MyBLE();
     MyBLE2();
+    MyBLE2(JsonDocument deviceObj);
     //MyBLE2(JsonDocument *configJson_);
     void printBasicInfo(); // debug all data to uart
     void printCellInfo();  // debug all data to uart
     void bleStartup();
     void disconnectFromServer(); // does not work as intended, but automatically reconnected
+    bool connectToServer();
+    bool isConnected();
     void bleRequestData();
     // void bmsDisableCharge();
     // void bmsEnableCharge();
     void mosfetCtrl(int chargeStatus, int dischargeStatus);
-    void getDeviceNameLoop();
+    String getDeviceNameLoop();
+    JsonDocument getState();
+    bool timeout(int currentTime);
+    JsonDocument getDeviceStatus();
 };
 
 #endif /* MY_BLE2_HPP */

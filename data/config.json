@@ -1,8 +1,4 @@
 {
-  "numberOfTemperature": 1,
-  "sleepVoltageMv": 11999,
-  "wakeUpVoltageMv": 12999,
-  "deepSleepVoltageMv": 11999,
   "deepSleepTimeSec": 1200,
   "wifi": [
     {
@@ -15,20 +11,6 @@
     },
     {
       "ssid": "Jun-iPhone",
-      "pass": "takehiro"
-    }
-  ],
-  "BLE": [
-    {
-      "mac": "10:a5:62:6c:6b:e4",
-      "pass": "takehiro"
-    },
-    {
-      "mac": "70:3e:97:07:b3:09",
-      "pass": "takehiro"
-    },
-    {
-      "mac": "4c:04:20:37:c1:a4",
       "pass": "takehiro"
     }
   ],
@@ -51,10 +33,10 @@
     "password": "mqttpass",
     "topic": "junichiM5Stack/"
   },
-  "rebootCount": 4,
+  "rebootCount": 9,
   "devices": [
     {
-      "type": "BLE",
+      "type": "BMS",
       "mac": "10:a5:62:6c:6b:e4",
       "numberOfTemperature": 1,
       "mqtt": {
@@ -167,37 +149,6 @@
             }
           },
           "state_topic": "stat/junichiBMS_1/STATE",
-          "qos": 2
-        }
-      }
-    },
-    {
-      "type": "I2C",
-      "mqtt": {
-        "topic": "junichiVoltMater_0/",
-        "discoveryPayload": {
-          "device": {
-            "identifiers": "junichiV_0",
-            "name": "VAMater_0",
-            "manufacturer": "M5Stack",
-            "hw_version": "1.0rev2"
-          },
-          "origin": {
-            "name": "M5Stack",
-            "sw_version": "2.1",
-            "support_url": "https://docs.m5stack.com/en/guide/iot_tools/vameter/usage"
-          },
-          "components": {
-            "main_battery_voltage": {
-              "platform": "sensor",
-              "name": "Main Battery Voltage",
-              "device_class": "voltage",
-              "unit_of_measurement": "V",
-              "value_template": "{{ value_json.calVoltage }}",
-              "unique_id": "3bd7ebc9-4a10-4553-b00d-e6ca1755cf6d"
-            }
-          },
-          "state_topic": "stat/junichiVoltMater_0/STATE",
           "qos": 2
         }
       }

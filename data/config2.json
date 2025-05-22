@@ -1,0 +1,375 @@
+{
+  "numberOfTemperature": 1,
+  "sleepVoltageMv": 11999,
+  "wakeUpVoltageMv": 12999,
+  "deepSleepVoltageMv": 11999,
+  "deepSleepTimeSec": 1200,
+  "wifi": [
+    {
+      "ssid": "Jun-Home-AP",
+      "pass": "takehiro"
+    },
+    {
+      "ssid": "Jun-FS020W",
+      "pass": "takehiro"
+    },
+    {
+      "ssid": "Jun-iPhone",
+      "pass": "takehiro"
+    }
+  ],
+  "poiURL": "http://junichi2.ddns.net/",
+  "ambient": {
+    "channelId": 50366,
+    "writeKey": "ccb476294fe16acd",
+    "channelId2": 86447,
+    "writeKe2": "56b1bcd1500f26b7",
+    "ambientSendIntervalBaseMs": 600000
+  },
+  "mqtt": {
+    "server": "192.168.0.20",
+    "server2": "junichi.ddns.net",
+    "port": 1883,
+    "user": "mqtt-user",
+    "password": "mqttpass",
+    "topic": "junichiM5Stack/"
+  },
+  "rebootCount": 4,
+  "devices": [
+    {
+      "type": "BMS",
+      "mac": "70:3e:97:07:b3:09",
+      "numberOfTemperature": 2,
+      "mqtt": {
+        "topic": "junichiBMS_0/",
+        "discoveryPayload": {
+          "device": {
+            "identifiers": "junichiBMS_0",
+            "name": "BMS_1",
+            "manufacturer": "M5Stack",
+            "hw_version": "1.0rev2"
+          },
+          "origin": {
+            "name": " bla2mqtt",
+            "sw_version": " 2.1",
+            "support_url": "https://bla2mqtt.example.com/support"
+          },
+          "components": {
+            "battery_voltage": {
+              "platform": "sensor",
+              "name": "Sub Battery Voltage",
+              "device_class": "voltage",
+              "unit_of_measurement": "V",
+              "value_template": "{{ value_json.batteryVoltage}}",
+              "unique_id": "b4aa57dc-eb3f-40f2-b73e-d1147445df98"
+            },
+            "battery_current": {
+              "platform": "sensor",
+              "name": "Sub Battery Current",
+              "device_class": "current",
+              "unit_of_measurement": "A",
+              "value_template": "{{ value_json.batteryCurrent}}",
+              "unique_id": "417915f9-22d6-448f-bc02-afae71525e91"
+            },
+            "battery_temparature_1": {
+              "platform": "sensor",
+              "name": "Sub Battery Temperature 1",
+              "device_class": "temperature",
+              "unit_of_measurement": "°C",
+              "value_template": "{{ value_json.batteryTemp1}}",
+              "unique_id": "308006f7-caeb-4b59-a33d-a54962e3419d"
+            },
+            "battery_temparature_2": {
+              "platform": "sensor",
+              "name": "Sub Battery Temperature 2",
+              "device_class": "temperature",
+              "unit_of_measurement": "°C",
+              "value_template": "{{ value_json.batteryTemp2}}",
+              "unique_id": "59370e0f-08fc-40a6-b310-8f288c7e57ea"
+            },
+            "battery_capacity": {
+              "platform": "sensor",
+              "device_class": "battery",
+              "name": "Sub Battery Capacity",
+              "unit_of_measurement": "%",
+              "value_template": "{{ value_json.batteryChargePercentage}}",
+              "unique_id": "448656c6-21b5-424f-ba2f-9e052c8398e6"
+            },
+            "charge_switch": {
+              "platform": "switch",
+              "name": "Charge Switch",
+              "command_topic": "cmnd/junichiBMS_0/charge",
+              "payload_on": "1",
+              "payload_off": "0",
+              "state_on": 1,
+              "state_off": 0,
+              "value_template": "{{ value_json.chargeStatus }}",
+              "unique_id": "81fcd5fa-6c03-4bfe-bc01-854c9115ae8c"
+            },
+            "discharge_switch": {
+              "platform": "switch",
+              "name": "Discharge Switch",
+              "command_topic": "cmnd/junichiBMS_0/discharge",
+              "payload_on": "1",
+              "payload_off": "0",
+              "state_on": 1,
+              "state_off": 0,
+              "value_template": "{{ value_json.dischargeStatus }}",
+              "unique_id": "27015f42-1831-4e9b-ab9e-9f49234cef3c"
+            }
+          },
+          "state_topic": "stat/junichiBMS_0/STATE",
+          "qos": 2
+        }
+      }
+    },
+    {
+      "type": "BMS",
+      "mac": "10:a5:62:6c:6b:e4",
+      "numberOfTemperature": 1,
+      "mqtt": {
+        "topic": "junichiBMS_1/",
+        "discoveryPayload": {
+          "device": {
+            "identifiers": "junichiBMS_1",
+            "name": "BMS_1",
+            "manufacturer": "M5Stack",
+            "hw_version": "1.0rev2"
+          },
+          "origin": {
+            "name": " bla2mqtt",
+            "sw_version": " 2.1",
+            "support_url": "https://bla2mqtt.example.com/support"
+          },
+          "components": {
+            "battery_name": {
+              "platform": "text",
+              "name": "Device Name",
+              "device_class": "battery",
+              "value_template": "{{ value_json.deviceName}}",
+              "unique_id": "ea32706b-4053-4d1e-8628-606287484ea7"
+            },
+            "battery_voltage": {
+              "platform": "sensor",
+              "name": "Sub Battery Voltage",
+              "device_class": "voltage",
+              "unit_of_measurement": "V",
+              "value_template": "{{ value_json.batteryVoltage}}",
+              "unique_id": "74756c0d-e6ef-4ad3-8788-ec88de4f4714"
+            },
+            "battery_current": {
+              "platform": "sensor",
+              "name": "Sub Battery Current",
+              "device_class": "current",
+              "unit_of_measurement": "A",
+              "value_template": "{{ value_json.batteryCurrent}}",
+              "unique_id": "c298b198-0dc8-4452-b4af-a3144557bb9b"
+            },
+            "battery_temparature_1": {
+              "platform": "sensor",
+              "name": "Sub Battery Temperature 1",
+              "device_class": "temperature",
+              "unit_of_measurement": "°C",
+              "value_template": "{{ value_json.batteryTemp1}}",
+              "unique_id": "84dffa30-6d01-45a6-9900-6784522feea4"
+            },
+            "battery_capacity": {
+              "platform": "sensor",
+              "device_class": "battery",
+              "name": "Sub Battery Capacity",
+              "unit_of_measurement": "%",
+              "value_template": "{{ value_json.batteryChargePercentage}}",
+              "unique_id": "b86ae8e9-1c2b-4163-b9db-1a3b105cc440"
+            },
+            "charge_switch": {
+              "platform": "switch",
+              "name": "Charge Switch",
+              "command_topic": "cmnd/junichiBMS_1/charge",
+              "payload_on": "1",
+              "payload_off": "0",
+              "state_on": 1,
+              "state_off": 0,
+              "value_template": "{{ value_json.chargeStatus }}",
+              "unique_id": "d638db4c-6905-4619-8702-d44e6d86f970"
+            },
+            "discharge_switch": {
+              "platform": "switch",
+              "name": "Discharge Switch",
+              "command_topic": "cmnd/junichiBMS_1/discharge",
+              "payload_on": "1",
+              "payload_off": "0",
+              "state_on": 1,
+              "state_off": 0,
+              "value_template": "{{ value_json.dischargeStatus }}",
+              "unique_id": "0c49015d-5e4e-4e3b-837d-4e0ff8b9b090"
+            },
+            "connection_switch": {
+              "platform": "switch",
+              "name": "Connection Switch",
+              "command_topic": "cmnd/junichiBMS_1/connection",
+              "payload_on": "1",
+              "payload_off": "0",
+              "state_on": 1,
+              "state_off": 0,
+              "value_template": "{{ value_json.connectionStatus }}",
+              "unique_id": "35829f29-2f5b-4fd4-b6bb-dc9986df2756"
+            }
+          },
+          "state_topic": "stat/junichiBMS_1/STATE",
+          "qos": 2
+        }
+      }
+    },
+    {
+      "type": "BMS",
+      "mac": "4c:04:20:37:c1:a4",
+      "numberOfTemperature": 2,
+      "mqtt": {
+        "topic": "junichiBMS_2/",
+        "discoveryPayload": {
+          "device": {
+            "identifiers": "junichiBMS_2",
+            "name": "BMS_1",
+            "manufacturer": "M5Stack",
+            "hw_version": "1.0rev2"
+          },
+          "origin": {
+            "name": " bla2mqtt",
+            "sw_version": " 2.1",
+            "support_url": "https://bla2mqtt.example.com/support"
+          },
+          "components": {
+            "battery_voltage": {
+              "platform": "sensor",
+              "name": "Sub Battery Voltage",
+              "device_class": "voltage",
+              "unit_of_measurement": "V",
+              "value_template": "{{ value_json.batteryVoltage}}",
+              "unique_id": "9a7b7e36-424e-40f7-82ae-7f3c900787b5"
+            },
+            "battery_current": {
+              "platform": "sensor",
+              "name": "Sub Battery Current",
+              "device_class": "current",
+              "unit_of_measurement": "A",
+              "value_template": "{{ value_json.batteryCurrent}}",
+              "unique_id": "83a444c5-22cf-41e5-b771-83394b3ac79d"
+            },
+            "battery_temparature_1": {
+              "platform": "sensor",
+              "name": "Sub Battery Temperature 1",
+              "device_class": "temperature",
+              "unit_of_measurement": "°C",
+              "value_template": "{{ value_json.batteryTemp1}}",
+              "unique_id": "a98f5c22-df33-4837-994b-846fc4f6c147"
+            },
+            "battery_capacity": {
+              "platform": "sensor",
+              "device_class": "battery",
+              "name": "Sub Battery Capacity",
+              "unit_of_measurement": "%",
+              "value_template": "{{ value_json.batteryChargePercentage}}",
+              "unique_id": "e31c86a9-799d-4db6-ad83-c00ee1b12b2a"
+            },
+            "charge_switch": {
+              "platform": "switch",
+              "name": "Charge Switch",
+              "command_topic": "cmnd/junichiBMS_2/charge",
+              "payload_on": "1",
+              "payload_off": "0",
+              "state_on": 1,
+              "state_off": 0,
+              "value_template": "{{ value_json.chargeStatus }}",
+              "unique_id": "18f5a85e-eb78-4899-917d-bfe0321f59ce"
+            },
+            "discharge_switch": {
+              "platform": "switch",
+              "name": "Discharge Switch",
+              "command_topic": "cmnd/junichiBMS_2/discharge",
+              "payload_on": "1",
+              "payload_off": "0",
+              "state_on": 1,
+              "state_off": 0,
+              "value_template": "{{ value_json.dischargeStatus }}",
+              "unique_id": "d59013a6-2a21-414a-afb0-a31dcc55c57f"
+            }
+          },
+          "state_topic": "stat/junichiBMS_2/STATE",
+          "qos": 2
+        }
+      }
+    },
+    {
+      "type": "VAMater",
+      "measurmentIntervalMs": 60000,
+      "mqtt": {
+        "topic": "junichiVoltMater_0/",
+        "discoveryPayload": {
+          "device": {
+            "identifiers": "junichiV_0",
+            "name": "VAMater_0",
+            "manufacturer": "M5Stack",
+            "hw_version": "1.0rev2"
+          },
+          "origin": {
+            "name": "M5Stack",
+            "sw_version": "2.1",
+            "support_url": "https://docs.m5stack.com/en/guide/iot_tools/vameter/usage"
+          },
+          "components": {
+            "main_battery_voltage": {
+              "platform": "sensor",
+              "name": "Main Battery Voltage",
+              "device_class": "voltage",
+              "unit_of_measurement": "V",
+              "value_template": "{{ value_json.calVoltage }}",
+              "unique_id": "3bd7ebc9-4a10-4553-b00d-e6ca1755cf6d"
+            }
+          },
+          "state_topic": "stat/junichiVoltMater_0/STATE",
+          "qos": 2
+        }
+      }
+    },
+    {
+      "type": "Lipo",
+      "measurmentIntervalMs": 60000,
+      "mqtt": {
+        "topic": "junichiLipo_1/",
+        "discoveryPayload": {
+          "device": {
+            "identifiers": "junichiLipo_1",
+            "name": "junichiLipo_1",
+            "manufacturer": "M5Stack",
+            "hw_version": "1.0rev2"
+          },
+          "origin": {
+            "name": "M5Stack",
+            "sw_version": "2.1",
+            "support_url": "https://docs.m5stack.com/en/guide/iot_tools/vameter/usage"
+          },
+          "components": {
+            "lipo_voltage": {
+              "platform": "sensor",
+              "name": "LiPo Voltage",
+              "device_class": "voltage",
+              "unit_of_measurement": "V",
+              "value_template": "{{ value_json.voltage}}",
+              "unique_id": "c04a83a1-9250-461b-b322-98df9a2e3ca5"
+            },
+            "lipo_current": {
+              "platform": "sensor",
+              "name": "LiPo Current",
+              "device_class": "current",
+              "unit_of_measurement": "A",
+              "value_template": "{{ value_json.current}}",
+              "unique_id": "4dc19e7c-8311-428e-87d7-27e45219db61"
+            }
+          },
+          "state_topic": "stat/junichiLipo_1/STATE",
+          "qos": 2
+        }
+      }
+    }
+  ]
+}

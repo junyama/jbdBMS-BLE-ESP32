@@ -5,8 +5,9 @@
 
 using namespace MyLOG;
 
-void VoltMater::setup(JsonDocument configJson)
+void VoltMater::setup(JsonDocument deviceObj)
 {
+    enabled = true;
     int i = 1;
     while (!vmeter.begin(&Wire, M5_UNIT_VMETER_I2C_ADDR, 32, 33, 400000U))
     {
@@ -33,17 +34,17 @@ void VoltMater::setup(JsonDocument configJson)
     // | PGA_512  |        16            |
     // | PGA_256  |        8             |
 
-    if (configJson["voltMater"]["resolution"])
-        resolution = configJson["voltMater"]["resolution"];
+    if (deviceObj["resolution"])
+        resolution = deviceObj["resolution"];
     else
         resolution = vmeter.getCoefficient() / M5_UNIT_VMETER_PRESSURE_COEFFICIENT;
 
-    if (configJson["voltMater"]["calibration_factor"])
-        calibration_factor = configJson["voltMater"]["calibration_factor"];
+    if (deviceObj["calibration_factor"])
+        calibration_factor = deviceObj["calibration_factor"];
     else
         calibration_factor = vmeter.getFactoryCalibration();
-    if (configJson["voltMater"]["measurmentIntervalMs"])
-        measurmentIntervalMs = configJson["voltMater"]["measurmentIntervalMs"];
+    if (deviceObj["measurmentIntervalMs"])
+        measurmentIntervalMs = deviceObj["measurmentIntervalMs"];
 }
 
 bool VoltMater::timeout(int currentTime)
@@ -57,7 +58,7 @@ bool VoltMater::timeout(int currentTime)
         return false;
 }
 
-JsonDocument VoltMater::getVoltage()
+JsonDocument VoltMater::getState()
 {
     JsonDocument doc;
     if (enabled)

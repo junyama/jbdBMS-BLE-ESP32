@@ -12,9 +12,12 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
 private:
 	static const String TAG;
 	BLEUUID serviceUUID;
-	JsonDocument *configJson;
+	//JsonDocument *configJson;
+	String mac;
 	void onResult(BLEAdvertisedDevice advertisedDevice);
-	bool isAddressInConfigList(BLEAdvertisedDevice advertisedDevice);
+	//bool isAddressInConfigList(BLEAdvertisedDevice advertisedDevice);
+	bool isAddressInDeviceList(BLEAdvertisedDevice advertisedDevice);
+
 
 public:
 	boolean doConnect;
@@ -22,7 +25,7 @@ public:
 
 	BLEAdvertisedDevice *myDevice;
 	MyAdvertisedDeviceCallbacks();
-	MyAdvertisedDeviceCallbacks(BLEUUID serviceUUID, JsonDocument *configJson_);
+	MyAdvertisedDeviceCallbacks(BLEUUID serviceUUID, String mac_);
 };
 
 #endif /* MY_ADVERTISE_DEVICE_HPP */

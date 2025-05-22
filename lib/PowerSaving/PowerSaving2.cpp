@@ -42,6 +42,7 @@ void PowerSaving2::disable()
     // MyLOG::DISABLE_LOGLCD = false;
 }
 
+/*
 void PowerSaving2::loop()
 {
     M5.update(); // Read the press state of the key.
@@ -71,5 +72,6 @@ void PowerSaving2::loop()
         M5.Lcd.setCursor(0, 0);
     }
 }
+*/
 
 #endif /* POWER_SAVING2_CPP */

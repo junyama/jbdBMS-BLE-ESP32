@@ -27,14 +27,15 @@
 
 #include "MyDebug.hpp"
 #include "MySdCard.hpp"
-#include "MyAmbient2.hpp"
-// #include "MyMqtt2.hpp"
+// #include "MyAmbient2.hpp"
+//  #include "MyMqtt2.hpp"
 #include <StreamUtils.h>
 
 #include "PowerSaving2.hpp"
 #include "MyLcd2.hpp"
 
 #include "VoltMater.hpp"
+#include "LipoMater.hpp"
 
 using namespace MyLOG;
 
@@ -45,7 +46,7 @@ using namespace MyLOG;
 static const String TAG = "main";
 
 JsonDocument configJson;
-DeserializationError error = deserializeJson(configJson, "{\"numberOfTemperature\": 2, \"sleepVoltageMv\": 12999, \"wakeUpVoltageMv\": 13899, \"deepSleepVoltageMv\": 11699, \"deepSleepTimeSec\": 900, \"wifi\": [{\"ssid\": \"Jun-Home-AP\", \"pass\": \"xxxxx\"}, {\"ssid\": \"Jun-FS020W\", \"pass\": \"xxxxx\"}], \"poiURL\": \"http://junichi2.ddns.net/\", \"ambient\": {\"channelId\": 50366, \"writeKey\": \"ccb476294fe16acd\", \"ambientSendIntervalBaseMs\": 60000}}");
+// DeserializationError error = deserializeJson(configJson, "{\"numberOfTemperature\": 2, \"sleepVoltageMv\": 12999, \"wakeUpVoltageMv\": 13899, \"deepSleepVoltageMv\": 11699, \"deepSleepTimeSec\": 900, \"wifi\": [{\"ssid\": \"Jun-Home-AP\", \"pass\": \"xxxxx\"}, {\"ssid\": \"Jun-FS020W\", \"pass\": \"xxxxx\"}], \"poiURL\": \"http://junichi2.ddns.net/\", \"ambient\": {\"channelId\": 50366, \"writeKey\": \"ccb476294fe16acd\", \"ambientSendIntervalBaseMs\": 60000}}");
 
 // Wi-Fi client
 WiFiClient wifiClient;
@@ -56,23 +57,28 @@ const uint32_t connectTimeoutMs = 20000;
 
 // sleep control
 unsigned int numberOfTemperature = 2; // numbe of temperature sensor
-float sleepVoltage = 13.399 * 1000;   // mV
-unsigned int sleepVoltageMv = 13199;  // mV
-unsigned int wakeUpVoltageMv = 13399;
-unsigned int deepSleepVoltageMv = 13199; // mV
-unsigned int deepSleepTimeSec = 900;     // seconds
+// float sleepVoltage = 13.399 * 1000;   // mV
+// unsigned int sleepVoltageMv = 13199;  // mV
+// unsigned int wakeUpVoltageMv = 13399;
+// unsigned int deepSleepVoltageMv = 13199; // mV
+unsigned int deepSleepTimeSec = 900; // seconds
 unsigned int rebootCount = 0;
 unsigned int rebootLimit = 10;
 
 // BLE
-MyBLE2 myBleArr[2];
+MyBLE2 myBleArr[3];
+// String macArr[2];
 JsonArray deviceList;
-int numberOfBleDevices = 2;
-// bool cellBalanceList[4];
+// int numberOfDevices = 2;
+int numberOfBleDevices = 0;
+//  bool cellBalanceList[4];
 bool chargeStatus, dischargeStatus;
 
 // Volt Mater
 VoltMater voltMater;
+
+// Lipo Mater
+LipoMater lipoMater;
 
 // MQTT
 // MyMqtt2 mqttClient2;
@@ -81,14 +87,15 @@ String mqttServer2 = "junichi.ddns.net";
 int mqttPort = 1883;
 String mqttUser = "mqtt-user";
 String mqttPass = "mqttpass";
+String systemTopic = "junichiM5Core2/";
+// String lipoTopic = "junichiLipo_0/";
 PubSubClient mqttClient(wifiClient);
 bool mqttDisabled = false;
 int mqttMessageSizeLimit = 128;
-String hostTopic = "junichiM5Core2/";
 void reConnectMqttServer();
 
 // Ambient
-MyAmbient2 ambientClient2;
+// MyAmbient2 ambientClient2;
 
 // LCD
 MyLcd2 myLcd;
@@ -148,7 +155,7 @@ void wifiScann()
 int wifiConnect()
 {
   LOGD(TAG, "Connecting Wifi...");
-  M5.Lcd.println("Connecting Wifi..."); // Serial port format output string.
+  myLcd.println("Connecting Wifi..."); // Serial port format output string.
   // if the connection to the stongest hotstop is lost, it will connect to the next network on the list
   if (wifiMulti.run(connectTimeoutMs) == WL_CONNECTED)
   {
@@ -172,21 +179,21 @@ int wifiConnect()
   }
 }
 
-String disconnectBLE(int deviceId)
+String disconnectBLE(int bleIndex)
 {
-  myBleArr[deviceId].ctrlCommand = 2;
+  myBleArr[bleIndex].ctrlCommand = 2;
   return "OK";
 }
 
-String requestDeviceName(int deviceId)
+String requestDeviceName(int bleIndex)
 {
-  myBleArr[deviceId].ctrlCommand = 3;
+  myBleArr[bleIndex].ctrlCommand = 3;
   return "OK";
 }
 
-String getDeviceName(int deviceId)
+String getDeviceName(int bleIndex)
 {
-  return myBleArr[deviceId].deviceNameStr;
+  return myBleArr[bleIndex].deviceNameStr;
 }
 
 String reset()
@@ -204,7 +211,7 @@ void loadConfig()
   fileName += CONFIG_FILE;
   String textStr = "";
   MySdCard::readFile(SD, fileName.c_str(), textStr);
-
+  myLcd.println("loading config file...");
   LOGD(TAG, "configJsonText: " + textStr);
   DeserializationError error = deserializeJson(configJson, textStr.c_str());
   if (error)
@@ -214,26 +221,37 @@ void loadConfig()
   }
 
   deviceList = configJson["devices"].as<JsonArray>();
-  // numberOfBleDevices = deviceList.size();
-  numberOfBleDevices = 0;
+  // numberOfDevices = deviceList.size();
+  // LOGD(TAG, "number of devices: " + String(numberOfDevices));
+  /*
+  int bleIndex = 0;
   for (int i = 0; i < deviceList.size(); i++)
   {
     JsonDocument deviceObj = deviceList[i];
     String deviceType = deviceObj["type"];
-    if (deviceType.equals("BLE"))
-      numberOfBleDevices++;
+    if (deviceType.equals("BMS"))
+    {
+      String mac = deviceObj["mac"];
+      JsonDocument obj;
+      obj["mac"] = mac;
+      macArr[bleIndex] = obj;
+      bleIndex++;
+    }
   }
+  numberOfBleDevices = bleIndex;
   LOGD(TAG, "number of BLE devices: " + String(numberOfBleDevices));
+  */
 
   /*
-  for (int deviceId = 0; deviceId < numberOfBleDevices; deviceId++)
+  for (int deviceIndex = 0; deviceIndex < numberOfBleDevices; deviceIndex++)
   {
-    String topic = deviceList[deviceId]["mqtt"]["topic"];
-    myBleArr[deviceId].deviceTopic = topic; //does not work
-    LOGD(TAG, "setting myBleArr[" + String(deviceId) + "].deviceTopic " + myBleArr[deviceId].deviceTopic);
+    String topic = deviceList[deviceIndex]["mqtt"]["topic"];
+    myBleArr[deviceIndex].deviceTopic = topic; //does not work
+    LOGD(TAG, "setting myBleArr[" + String(deviceIndex) + "].deviceTopic " + myBleArr[deviceIndex].deviceTopic);
   }
   */
 
+  /*
   int sleepVoltageMv_ = configJson["sleepVoltageMv"];
   if (sleepVoltageMv_)
   {
@@ -246,6 +264,7 @@ void loadConfig()
   int deepSleepVoltageMv_ = configJson["deepSleepVoltageMv"];
   if (deepSleepVoltageMv_)
     deepSleepVoltageMv = deepSleepVoltageMv_;
+  */
   int deepSleepTimeSec_ = configJson["deepSleepTimeSec"];
   if (deepSleepTimeSec_)
     deepSleepTimeSec = deepSleepTimeSec_;
@@ -292,7 +311,7 @@ void updatePOI()
     }
     else
     {
-      M5.Lcd.println("Updating POI...");
+      myLcd.println("Updating POI...");
 
       MySdCard::listDir(SD, "/PersonalPOI", 0);
       MySdCard::removeDirR(SD, "/PersonalPOI");
@@ -318,7 +337,7 @@ void updatePOI()
           LOGD(TAG, "GET " + POIFileName + " failed, HTTP Response code: " + String(httpResponseCode));
         }
       }
-      M5.Lcd.println("POI update done!");
+      myLcd.println("POI update done!");
       delay(5000);
     }
   }
@@ -332,6 +351,7 @@ void updatePOI()
   return;
 }
 
+/*
 void sleep(int sec)
 {
   sec = 5;
@@ -352,53 +372,87 @@ void myDeepSleep(int sec) // link error
   M5.Axp.DeepSleep(SLEEP_SEC(sec));
 }
 
-JsonDocument getBmsState(int deviceId)
+JsonDocument getAllState()
 {
   JsonDocument doc;
-  doc["deviceName"] = myBleArr[deviceId].deviceNameStr;
-  doc["batteryVoltage"] = String(myBleArr[deviceId].packBasicInfo.Volts / 1000.0);
-  doc["batteryCurrent"] = String(myBleArr[deviceId].packBasicInfo.Amps / 1000.0);
-  doc["batteryTemp1"] = String(myBleArr[deviceId].packBasicInfo.Temp1 / 10.0);
-  if (configJson["numberOfTemperature"] == 2)
-    doc["batteryTemp2"] = String(myBleArr[deviceId].packBasicInfo.Temp2 / 10.0);
-  doc["batteryChargePercentage"] = String(myBleArr[deviceId].packBasicInfo.CapacityRemainPercent);
-  doc["chargeStatus"] = String(myBleArr[deviceId].packBasicInfo.MosfetStatus & 1);
-  doc["dischargeStatus"] = String((myBleArr[deviceId].packBasicInfo.MosfetStatus & 2) >> 1);
-  JsonDocument doc2 = voltMater.getVoltage();
-  doc["calVoltage"] = doc2["calVoltage"];
-  doc["lipoVoltage"] = String(M5.Axp.GetBatVoltage());
-  doc["lipoCurrent"] = String(M5.Axp.GetBatCurrent());
-  doc["sleepVoltage"] = configJson["sleepVoltage"];
-  doc["wakeUpVoltageMv"] = configJson["wakeUpVoltageMv"];
-  doc["deepSleepVoltageMv"] = configJson["deepSleepVoltageMv"];
-  doc["deepSleepTimeSec"] = configJson["deepSleepTimeSec"];
-  doc["ambientSendIntervalBaseMs"] = configJson["ambient"]["ambientSendIntervalBaseMs"];
+  String jsonStr;
+  // JsonDocument deviceObj;
+  JsonArray deviceList = doc.to<JsonArray>();
+  // LOGD(TAG, "numberOfBleDevices: " + String(numberOfBleDevices));
+  for (int bleIndex = 0; bleIndex < numberOfBleDevices; bleIndex++)
+  {
+    JsonDocument deviceObj;
+    deviceObj["deviceName"] = myBleArr[bleIndex].deviceNameStr;
+    deviceObj["batteryVoltage"] = String(myBleArr[bleIndex].packBasicInfo.Volts / 1000.0);
+    deviceObj["batteryCurrent"] = String(myBleArr[bleIndex].packBasicInfo.Amps / 1000.0);
+    deviceObj["batteryTemp1"] = String(myBleArr[bleIndex].packBasicInfo.Temp1 / 10.0);
+    if (myBleArr[bleIndex].numberOfTemperature == 2)
+      deviceObj["batteryTemp2"] = String(myBleArr[bleIndex].packBasicInfo.Temp2 / 10.0);
+    deviceObj["batteryChargePercentage"] = String(myBleArr[bleIndex].packBasicInfo.CapacityRemainPercent);
+    deviceObj["chargeStatus"] = String(myBleArr[bleIndex].packBasicInfo.MosfetStatus & 1);
+    deviceObj["dischargeStatus"] = String((myBleArr[bleIndex].packBasicInfo.MosfetStatus & 2) >> 1);
+    // serializeJson(deviceObj, jsonStr);
+    // LOGD(TAG, "deviceObj: " + jsonStr);
+    deviceList.add(deviceObj);
+  }
+  // serializeJson(deviceList, jsonStr);
+  // LOGD(TAG, "deviceList: " + jsonStr);
+  / *
+  JsonDocument voltMaterObj = voltMater.getVoltage();
+  {
+    JsonDocument deviceObj;
+    deviceObj["calVoltage"] = voltMaterObj["calVoltage"];
+    deviceList.add(deviceObj);
+  }
+  * /
+  {
+    // JsonDocument deviceObj;
+    // deviceObj["lipoVoltage"] = String(lipoMater.getVoltage());
+    // deviceObj["lipoCurrent"] = String(lipoMater.getCurrent());
+    deviceList.add(lipoMater.getState());
+  }
+  // doc["devices"] = deviceList;
+  serializeJsonPretty(doc, jsonStr);
+  LOGD(TAG, "getAllState() returns: " + jsonStr);
   return doc;
 }
+*/
 
-JsonDocument getState(int deviceId)
+/*
+JsonDocument getBmsState(int bleIndex)
 {
   JsonDocument doc;
-  doc["deviceName"] = myBleArr[deviceId].deviceNameStr;
-  doc["batteryVoltage"] = String(myBleArr[deviceId].packBasicInfo.Volts / 1000.0);
-  doc["batteryCurrent"] = String(myBleArr[deviceId].packBasicInfo.Amps / 1000.0);
-  doc["batteryTemp1"] = String(myBleArr[deviceId].packBasicInfo.Temp1 / 10.0);
+  doc["deviceName"] = myBleArr[bleIndex].deviceNameStr;
+  doc["batteryVoltage"] = String(myBleArr[bleIndex].packBasicInfo.Volts / 1000.0);
+  doc["batteryCurrent"] = String(myBleArr[bleIndex].packBasicInfo.Amps / 1000.0);
+  doc["batteryTemp1"] = String(myBleArr[bleIndex].packBasicInfo.Temp1 / 10.0);
   if (configJson["numberOfTemperature"] == 2)
-    doc["batteryTemp2"] = String(myBleArr[deviceId].packBasicInfo.Temp2 / 10.0);
-  doc["batteryChargePercentage"] = String(myBleArr[deviceId].packBasicInfo.CapacityRemainPercent);
-  doc["chargeStatus"] = String(myBleArr[deviceId].packBasicInfo.MosfetStatus & 1);
-  doc["dischargeStatus"] = String((myBleArr[deviceId].packBasicInfo.MosfetStatus & 2) >> 1);
-  //JsonDocument doc2 = voltMater.getVoltage();
-  //doc["calVoltage"] = doc2["calVoltage"];
-  doc["lipoVoltage"] = String(M5.Axp.GetBatVoltage());
-  doc["lipoCurrent"] = String(M5.Axp.GetBatCurrent());
+    doc["batteryTemp2"] = String(myBleArr[bleIndex].packBasicInfo.Temp2 / 10.0);
+  doc["batteryChargePercentage"] = String(myBleArr[bleIndex].packBasicInfo.CapacityRemainPercent);
+  doc["chargeStatus"] = String(myBleArr[bleIndex].packBasicInfo.MosfetStatus & 1);
+  doc["dischargeStatus"] = String((myBleArr[bleIndex].packBasicInfo.MosfetStatus & 2) >> 1);
+  // JsonDocument doc2 = voltMater.getVoltage();
+  // doc["calVoltage"] = doc2["calVoltage"];
+  // doc["lipoVoltage"] = String(M5.Axp.GetBatVoltage());
+  // doc["lipoCurrent"] = String(M5.Axp.GetBatCurrent());
   return doc;
 }
+*/
+
+/*
+JsonDocument getLipoState()
+{
+  JsonDocument doc;
+  deviceObj["lipoVoltage"] = String(lipoMater.getVoltage());
+  deviceObj["lipoCurrent"] = String(lipoMater.getCurrent());
+  return doc;
+}
+*/
 
 // MQTT functions definitions
-String getDeviceTopic(int deviceId)
+String getDeviceTopic(int deviceIndex)
 {
-  JsonDocument deviceObj = deviceList[deviceId];
+  JsonDocument deviceObj = deviceList[deviceIndex];
   String deviceTopic = deviceObj["mqtt"]["topic"];
   return deviceTopic;
 }
@@ -454,17 +508,17 @@ void reConnectMqttServer()
     {
       LOGD(TAG, "Connected.");
       // Once connected, publish an announcement to the topic.
-      String topicStr = "stat/" + hostTopic + "STATE";
+      String topicStr = "stat/" + systemTopic + "STATE";
       publish(topicStr.c_str(), "MQTT reconnected");
       // ... and resubscribe.
-      topicStr = "cmnd/" + hostTopic + "#";
+      topicStr = "cmnd/" + systemTopic + "#";
       mqttClient.subscribe(topicStr.c_str());
       LOGD(TAG, "topic(" + topicStr + ") subscribed");
-      for (int deviceId = 0; deviceId < numberOfBleDevices; deviceId++)
+      for (int deviceIndex = 0; deviceIndex < deviceList.size(); deviceIndex++)
       {
-        // JsonDocument deviceObj = deviceList[deviceId];
+        // JsonDocument deviceObj = deviceList[deviceIndex];
         // String deviceTopic = deviceObj["mqtt"]["topic"];
-        topicStr = "cmnd/" + getDeviceTopic(deviceId) + "#";
+        topicStr = "cmnd/" + getDeviceTopic(deviceIndex) + "#";
         mqttClient.subscribe(topicStr.c_str());
         LOGD(TAG, "topic(" + topicStr + ") subscribed");
       }
@@ -509,22 +563,28 @@ void publishHaDiscovery()
   JsonDocument discoveryPayload;
   // JsonArray deviceList = configJson["devices"].as<JsonArray>();
   LOGD(TAG, "loading discovery payload from config.json");
-  for (int deviceId = 0; deviceId < numberOfBleDevices; deviceId++)
+  for (int deviceIndex = 0; deviceIndex < deviceList.size(); deviceIndex++)
   {
-    JsonDocument deviceObj = deviceList[deviceId];
+    JsonDocument deviceObj = deviceList[deviceIndex];
     String deviceTopic = deviceObj["mqtt"]["topic"];
     discoveryTopic = "homeassistant/device/" + deviceTopic + "config";
     discoveryPayload = deviceObj["mqtt"]["discoveryPayload"];
-    LOGD(TAG, "publishing for HA discovery......");
+    LOGD(TAG, String(deviceIndex) + ": publishing for HA discovery.................");
     publishJson(discoveryTopic, discoveryPayload, true);
   }
+}
+
+void publishHaDiscovery2(JsonDocument deviceObj)
+{
+  String discoveryTopic = deviceObj["mqtt"]["topic"];
+  discoveryTopic = "homeassistant/device/" + discoveryTopic + "config";
+  JsonDocument discoveryPayload = deviceObj["mqtt"]["discoveryPayload"];
+  publishJson(discoveryTopic, discoveryPayload, true);
 }
 
 void mqttCallback(char *topic_, byte *payload, unsigned int length)
 {
   LOGD(TAG, "mqttCallback invoked.");
-  int chargeStatus;
-  int dischargeStatus;
 
   String msgStr = "";
   for (int i = 0; i < length; i++)
@@ -532,37 +592,84 @@ void mqttCallback(char *topic_, byte *payload, unsigned int length)
     msgStr = msgStr + (char)payload[i];
   }
   String logStr = "Message arrived[";
-  logStr = logStr + topic_;
-  logStr = logStr + "] ";
-  logStr = logStr + msgStr;
+  logStr += topic_;
+  logStr += "] ";
+  logStr += msgStr;
   LOGD(TAG, logStr);
   LOGLCD(TAG, logStr);
 
-  // String deviceTopic;
-  for (int deviceId = 0; deviceId < numberOfBleDevices; deviceId++)
+  if (String(topic_).equals("cmnd/" + voltMater.topic + "getState"))
   {
-    chargeStatus = myBleArr[deviceId].packBasicInfo.MosfetStatus & 1;
-    dischargeStatus = (myBleArr[deviceId].packBasicInfo.MosfetStatus & 2) >> 1;
+    LOGD(TAG, "responding to geState of " + voltMater.topic);
+    publishJson(("stat/" + voltMater.topic + "RESULT").c_str(), voltMater.getState(), false);
+    return;
+  }
 
-    // deviceTopic = myBleArr[deviceId].deviceTopic; //does not work
-    // LOGD(TAG, "myBleArr[" + String(deviceId) + "].deviceTopic: " + myBleArr[deviceId].deviceTopic);
-    // JsonDocument deviceObj = deviceList[deviceId];
-    // String deviceTopic = deviceObj["mqtt"]["topic"];
-    String deviceTopic = getDeviceTopic(deviceId);
+  if (String(topic_).equals("cmnd/" + lipoMater.topic + "getState"))
+  {
+    LOGD(TAG, "responding to geState of " + lipoMater.topic);
+    publishJson(("stat/" + lipoMater.topic + "RESULT").c_str(), lipoMater.getState(), false);
+    return;
+  }
 
-    if (String(topic_).equals("cmnd/" + deviceTopic + "getState"))
+  int chargeStatus;
+  int dischargeStatus;
+  bool connectionStatus;
+  for (int bleIndex = 0; bleIndex < numberOfBleDevices; bleIndex++)
+  {
+    LOGD(TAG, "myBleArr[" + String(bleIndex) + "].topic = " + myBleArr[bleIndex].topic);
+    LOGD(TAG, "myBleArr[" + String(bleIndex) + "].enabled = " + String(myBleArr[bleIndex].enabled));
+    if (!myBleArr[bleIndex].enabled)
     {
-      LOGD(TAG, "responding to getState!");
-      publishJson(("stat/" + deviceTopic + "RESULT").c_str(), getState(deviceId), false);
-      return;
+      LOGD(TAG, "myBleArr[" + String(bleIndex) + "] is not enabled so continue.");
+      continue;
     }
+    String deviceTopic = myBleArr[bleIndex].topic;
+    chargeStatus = myBleArr[bleIndex].packBasicInfo.MosfetStatus & 1;
+    dischargeStatus = (myBleArr[bleIndex].packBasicInfo.MosfetStatus & 2) >> 1;
+    connectionStatus = myBleArr[bleIndex].isConnected();
+
     if (String(topic_).equals("cmnd/" + deviceTopic + "getBmsState"))
     {
-      LOGD(TAG, "responding to getBmsState!");
-      publishJson("stat/" + deviceTopic + "RESULT", getBmsState(deviceId), false);
-      publishJson("stat/" + deviceTopic + "STATE", getBmsState(deviceId), false);
+      LOGD(TAG, "responding to getBmsState of " + deviceTopic + "!");
+      publishJson(("stat/" + deviceTopic + "RESULT").c_str(), myBleArr[bleIndex].getState(), false);
       return;
     }
+    
+    if (String(topic_).equals("cmnd/" + deviceTopic + "connection"))
+    {
+      LOGD(TAG, "connection status: " + String(connectionStatus));
+      if (msgStr.equals(""))
+      {
+        if (connectionStatus)
+          msgStr = "ON";
+        else
+          msgStr = "OFF";
+      }
+      else if (msgStr.equals("0"))
+      {
+        myBleArr[bleIndex].disconnectFromServer();
+        msgStr = "OFF";
+        connectionStatus = false;
+      }
+      else if (msgStr.equals("1"))
+      {
+        myBleArr[bleIndex].connectToServer();
+        msgStr = "ON";
+        connectionStatus = true;
+      }
+      else
+      {
+        msgStr = "INVALID";
+      }
+      LOGD(TAG, "responding to connection");
+      publish(("stat/" + deviceTopic + "CONNECTION").c_str(), msgStr.c_str());
+      msgStr = "{\"connectionStatus\": " + String(connectionStatus) + "}";
+      publish(("stat/" + deviceTopic + "RESULT").c_str(), msgStr.c_str());
+      publish(("stat/" + deviceTopic + "STATE").c_str(), msgStr.c_str());
+      return;
+    }
+    
     if ((String(topic_).equals("cmnd/" + deviceTopic + "charge")) || ((String(topic_).equals("cmnd/" + deviceTopic + "discharge"))))
     {
       if (String(topic_).equals("cmnd/" + deviceTopic + "charge"))
@@ -577,19 +684,19 @@ void mqttCallback(char *topic_, byte *payload, unsigned int length)
         }
         else if (msgStr.equals("0"))
         {
-          myBleArr[deviceId].mosfetCtrl(0, dischargeStatus);
+          myBleArr[bleIndex].mosfetCtrl(0, dischargeStatus);
           chargeStatus = 0;
           msgStr = "OFF";
         }
         else if (msgStr.equals("1"))
         {
-          myBleArr[deviceId].mosfetCtrl(1, dischargeStatus);
+          myBleArr[bleIndex].mosfetCtrl(1, dischargeStatus);
           chargeStatus = 1;
           msgStr = "ON";
         }
         else if (msgStr.equals("toggle"))
         {
-          myBleArr[deviceId].mosfetCtrl((chargeStatus ^ 1), dischargeStatus);
+          myBleArr[bleIndex].mosfetCtrl((chargeStatus ^ 1), dischargeStatus);
           chargeStatus = chargeStatus ^ 1;
           msgStr = "TOGGLE";
         }
@@ -612,19 +719,19 @@ void mqttCallback(char *topic_, byte *payload, unsigned int length)
         }
         else if (msgStr.equals("0"))
         {
-          myBleArr[deviceId].mosfetCtrl(chargeStatus, 0);
+          myBleArr[bleIndex].mosfetCtrl(chargeStatus, 0);
           dischargeStatus = 0;
           msgStr = "OFF";
         }
         else if (msgStr.equals("1"))
         {
-          myBleArr[deviceId].mosfetCtrl(chargeStatus, 1);
+          myBleArr[bleIndex].mosfetCtrl(chargeStatus, 1);
           dischargeStatus = 1;
           msgStr = "ON";
         }
         else if (msgStr.equals("toggle"))
         {
-          myBleArr[deviceId].mosfetCtrl(chargeStatus, (dischargeStatus ^ 1));
+          myBleArr[bleIndex].mosfetCtrl(chargeStatus, (dischargeStatus ^ 1));
           dischargeStatus = dischargeStatus ^ 1;
           msgStr = "TOGGLE";
         }
@@ -640,6 +747,33 @@ void mqttCallback(char *topic_, byte *payload, unsigned int length)
       publish(("stat/" + deviceTopic + "STATE").c_str(), msgStr.c_str());
       return;
     }
+  }
+}
+
+void detectButton()
+{
+  M5.update(); // Read the press state of the key.
+  if (M5.BtnA.wasReleased() || M5.BtnA.pressedFor(1000, 200))
+  {
+    if (powerSaving.lcdState)
+    {
+      powerSaving.enable();
+    }
+    else
+    {
+      powerSaving.disable();
+    }
+  }
+  else if (M5.BtnB.wasReleased() || M5.BtnB.pressedFor(1000, 200))
+  {
+    if (++myLcd.bmsIndexShown > 2)
+      myLcd.bmsIndexShown = 0;
+    LOGD(TAG, "BtnB pushed with bmsIndex: " + String(myLcd.bmsIndexShown));
+    myLcd.showBatteryInfo();
+  }
+  else if (M5.BtnC.wasReleased() || M5.BtnC.pressedFor(1000, 200))
+  {
+    M5.shutdown();
   }
 }
 
@@ -678,7 +812,7 @@ void setup()
     String logStr = "going to deep sleep because exceeding reboot limit (" + String(rebootLimit) + "). Wake up in " + String(deepSleepTimeSec) + "sec";
     LOGD(TAG, logStr);
     myLcd.println(logStr);
-    publish("stat/" + hostTopic + "STATE", logStr);
+    publish("stat/" + systemTopic + "STATE", logStr);
     delay(3000);
     // PowerSaving::enable();
     powerSaving.enable();
@@ -722,14 +856,22 @@ void setup()
   LOGD(TAG, "Going to update POI");
   updatePOI(); // TBD
 
-  ambientClient2.begin(configJson, &wifiClient);
+  // ambientClient2.begin(configJson, &wifiClient);
 
   // MQTT setup
-  M5.Lcd.println("MQTT setting up!");
+  myLcd.println("MQTT setting up");
   // mqttClient2.setup(&wifiClient, &myBleArr[0], myBleArr, &voltMater, configJson);
   // void MyMqtt2::setup(WiFiClient *wifiClient, MyBLE2 *myBLE_, MyBLE2 *myBleArr_, VoltMater *voltMater_, JsonDocument configJson_)
-
   LOGD(TAG, "Setting MQTT parameters ..........");
+  String systemTopicConf = configJson["mqtt"]["topic"];
+  LOGD(TAG, "configJson[\"mqtt\"][\"topic\"]: " + systemTopicConf);
+  if (systemTopicConf != "null")
+  {
+    systemTopic = systemTopicConf;
+    LOGD(TAG, "System topic changed: " + systemTopic);
+  }
+  else
+    LOGD(TAG, "default System topic: " + systemTopic);
   String mqttServerConf = configJson["mqtt"]["server"];
   LOGD(TAG, "configJson[\"mqtt\"][\"server\"]: " + mqttServerConf);
   if (mqttServerConf != "null")
@@ -751,11 +893,11 @@ void setup()
   LOGD(TAG, "configJson[\"mqtt\"][\"topic\"]: " + mqttTopicConf);
   if (mqttTopicConf != "null")
   {
-    hostTopic = mqttTopicConf;
-    LOGD(TAG, "MQTT changed hostTopic: " + hostTopic);
+    systemTopic = mqttTopicConf;
+    LOGD(TAG, "MQTT changed systemTopic: " + systemTopic);
   }
   else
-    LOGD(TAG, "MQTT default Topic: " + hostTopic);
+    LOGD(TAG, "MQTT default Topic: " + systemTopic);
   String mqttUserConf = configJson["mqtt"]["user"];
   if (mqttUserConf != "null")
   {
@@ -786,44 +928,91 @@ void setup()
   mqttClient.setCallback(mqttCallback);
 
   // Home aAssistant discoverry
-  M5.Lcd.println("Publishing HA discvery.");
-  publishHaDiscovery();
+  // myLcd.println("Publishing HA discvery.");
+  // publishHaDiscovery();
 
-  M5.Lcd.println("MQTT setup done!");
-
-  // Volt meter setup
-  voltMater.setup(configJson);
-  LOGD(TAG, "Volt Mater setup done");
-  M5.Lcd.println("Volt Mater setup done!");
-
-  //  setup BLE
-  LOGD(TAG, "going to setup BLE");
-  M5.Lcd.println("going to setup BLE");
+  myLcd.println("MQTT setup done!");
 
   // myBLE.configJson = &configJson;
   // myBLE.packBasicInfo.Volts = 15000;
   // myBLE.bleStartup();
   //
-  LOGD(TAG, "going to setup BLE Array");
-  for (int i = 0; i < numberOfBleDevices; i++)
+  LOGD(TAG, "going to setup each device of deviceList");
+  int bleIndex = 0;
+  for (int deviceIndex = 0; deviceIndex < deviceList.size(); deviceIndex++)
   {
-    Serial.printf("\n\nmyBleArr[%d] =========================================================================\n", i);
-    new (myBleArr + i) MyBLE2();
-    myBleArr[i].configJson = &configJson;
-    myBleArr[i].numberOfTemperature = configJson["numberOfTemperature"];
-    myBleArr[i].packBasicInfo.Volts = 15000;
-    LOGD(TAG, "going to call bleStartup()");
-    myBleArr[i].bleStartup();
-    LOGD(TAG, "going to call getDeviceNameLoop(&myBleArr[i])");
-    myBleArr[i].getDeviceNameLoop();
+    Serial.printf("\nSet up device[%d] ===== BEGIN ====================================================\n", deviceIndex);
+    JsonDocument deviceObj = deviceList[deviceIndex];
+    String type = deviceObj["type"];
+    String topic = getDeviceTopic(deviceIndex);
+    int numberOfTemperature = deviceObj["numberOfTemperature"];
+    if (type.equals("BMS"))
+    {
+      //  setup BLE
+      String logStr = "Setting up BLE(" + String(bleIndex) + ")...";
+      LOGD(TAG, logStr);
+      myLcd.println(logStr);
+      new (myBleArr + bleIndex) MyBLE2(deviceObj);
+      myBleArr[bleIndex].bleStartup();
+      //
+      String jsonStr;
+      JsonDocument deviceStatus = myBleArr[bleIndex].getDeviceStatus();
+      serializeJson(deviceStatus, jsonStr);
+      LOGD(TAG, "getDeviceStatus(): " + jsonStr);
+      int doConnect = deviceStatus["doConnect"];
+      if (doConnect == 0)
+      {
+        LOGD(TAG, "myBleArr[bleIndex].enabled = false");
+        myLcd.println("BLE(" + String(bleIndex) + ") is not available");
+      }
+      else
+      {
+        myLcd.println("BLE(" + String(bleIndex) + ") is connected");
+        LOGD(TAG, "myBleArr[bleIndex].enabled = true");
+      }
+      myBleArr[bleIndex].enabled = myBleArr[bleIndex].myAdvertisedDeviceCallbacks->doConnect;
+      //
+      if (myBleArr[bleIndex].enabled)
+      {
+        LOGD(TAG, "getting BLE device name");
+        String deviceName = myBleArr[bleIndex].getDeviceNameLoop();
+        myLcd.bmsInfoArr[bleIndex].deviceName = deviceName + " (" + myBleArr[bleIndex].mac + ")";
+        publishHaDiscovery2(deviceObj);
+      }
+      bleIndex++;
+    }
+    else if (type.equals("VAMater"))
+    {
+      voltMater.setup(deviceObj);
+      // if (topic != "null")
+      // voltMater.topic = topic;
+      if (voltMater.enabled)
+        publishHaDiscovery2(deviceObj);
+      LOGD(TAG, "Volt Mater setup done");
+      myLcd.println("Volt Mater setup done!");
+    }
+    else if (type.equals("Lipo"))
+    {
+      lipoMater.setup(deviceObj);
+      // if (topic != "null")
+      // lipoMater.topic = topic;
+      if (lipoMater.enabled)
+        publishHaDiscovery2(deviceObj);
+      LOGD(TAG, "Lipo Mater setup done");
+      myLcd.println("Lipo Mater setup done!");
+    }
+    Serial.printf("Set up device[%d] ===== END ==========================================================\n\n", deviceIndex);
   }
+  numberOfBleDevices = bleIndex;
+  LOGD(TAG, "number of BLE devices: " + String(numberOfBleDevices));
+
   //
   // LOGD(TAG, "getting device name....");
   // getDeviceNameLoop(&myBLE);
   // myBLE.getDeviceNameLoop();
 
-  LOGD(TAG, "BLE setup done");
-  M5.Lcd.println("BLE setup done!");
+  LOGD(TAG, "Device setup done");
+  myLcd.println("Device setup done!");
 
   // esp_sleep_enable_timer_wakeup(deepSleepTimeSec * uS_TO_S_FACTOR);
   // LOGD(TAG, "Setup ESP32 to sleep for " + String(deepSleepTimeSec) + " Seconds");
@@ -832,8 +1021,8 @@ void setup()
   // PowerSaving::setup();
   powerSaving.setup();
 
-  M5.Lcd.println("ALL setup done!");
-  M5.Lcd.println("enabling power save.");
+  myLcd.println("ALL setup done!");
+  myLcd.println("enabling power save.");
   delay(2000);
   // PowerSaving::enable();
   powerSaving.enable();
@@ -841,115 +1030,114 @@ void setup()
 /////////////////////////////
 void loop()
 {
-  powerSaving.loop();
+  // powerSaving.loop();
+  // myLcd.loop();
+  detectButton();
+
   if (!mqttClient.connected())
   {
     reConnectMqttServer();
   }
   mqttClient.loop();
-  for (int deviceId = 0; deviceId < numberOfBleDevices; deviceId++)
+  int bleIndex = 0;
+  for (int deviceIndex = 0; deviceIndex < deviceList.size(); deviceIndex++)
   {
-    myBleArr[deviceId].bleRequestData();
-    if (myBleArr[deviceId].newPacketReceived == true)
+    JsonDocument deviceObj = deviceList[deviceIndex];
+    String type = deviceObj["type"];
+    // String topic = getDeviceTopic(deviceIndex);
+    String topic = deviceObj["mqtt"]["topic"];
+    if (type.equals("BMS"))
     {
-      LOGD(TAG, "newPacketReceived == true");
-      DISABLE_LOGD = true;
-      myBleArr[deviceId].printBasicInfo();
-      DISABLE_LOGD = false;
-      LOGD(TAG, "Pack Voltage: " + String(myBleArr[deviceId].packBasicInfo.Volts));
-      DISABLE_LOGD = true;
-      LOGD(TAG, "BalanceCodeLow: " + String(myBleArr[deviceId].packBasicInfo.BalanceCodeLow));
-      LOGD(TAG, "MosfetStatus: " + String(myBleArr[deviceId].packBasicInfo.MosfetStatus));
-      LOGD(TAG, "CellAvg: " + String(myBleArr[deviceId].packCellInfo.CellAvg));
-      LOGD(TAG, "CellMedian: " + String(myBleArr[deviceId].packCellInfo.CellMedian));
-      myBleArr[deviceId].printCellInfo();
-      DISABLE_LOGD = false;
-
-      // JsonDocument deviceObj = deviceList[deviceId];
-      // String deviceTopic = deviceObj["mqtt"]["topic"];
-      publishJson("stat/" + getDeviceTopic(deviceId) + "STATE", getState(deviceId), true);
-      //publishJson("stat/" + hostTopic + "STATE", voltMater.getVoltage(), true);
-      //voltMater.lastMeasurment = millis();
-
-      myLcd.showBatteryInfo(myBleArr[deviceId].packBasicInfo.Volts / 1000.0f, myBleArr[deviceId].packBasicInfo.Amps / 1000.0f, myBleArr[deviceId].packCellInfo.CellDiff / 1.0f, myBleArr[deviceId].packBasicInfo.Temp1 / 10.0f, voltMater.calVoltage, myBleArr[deviceId].packBasicInfo.CapacityRemainPercent);
-    }
-    if (myBleArr[deviceId].packBasicInfo.Volts <= sleepVoltageMv && WiFi.isConnected())
-    {
-      String logStr = "disconnecting WiFi, batteryVoltage: " + String(myBleArr[deviceId].packBasicInfo.Volts) + " <= " + String(sleepVoltageMv);
-      LOGD(TAG, logStr);
-      publish("stat/" + hostTopic + "STATE", logStr);
-      delay(2000);
-      WiFi.disconnect(true);
-      delay(3000);
-      powerSaving.enable();
-      ambientClient2.setLongInterval();
-    }
-    else
-    {
-      if (WiFi.isConnected())
+      // LOGD(TAG, "going to bleRequestData()");
+      if (myBleArr[bleIndex].enabled)
       {
-        if (!mqttClient.connected())
+        myBleArr[bleIndex].bleRequestData();
+        if (myBleArr[bleIndex].newPacketReceived == true)
         {
-          reConnectMqttServer();
+          LOGD(TAG, "newPacketReceived == true");
+          /*
+          DISABLE_LOGD = true;
+          myBleArr[bleIndex].printBasicInfo();
+          DISABLE_LOGD = false;
+          LOGD(TAG, "Pack Voltage: " + String(myBleArr[bleIndex].packBasicInfo.Volts));
+          DISABLE_LOGD = true;
+          LOGD(TAG, "BalanceCodeLow: " + String(myBleArr[bleIndex].packBasicInfo.BalanceCodeLow));
+          LOGD(TAG, "MosfetStatus: " + String(myBleArr[bleIndex].packBasicInfo.MosfetStatus));
+          LOGD(TAG, "CellAvg: " + String(myBleArr[bleIndex].packCellInfo.CellAvg));
+          LOGD(TAG, "CellMedian: " + String(myBleArr[bleIndex].packCellInfo.CellMedian));
+          myBleArr[bleIndex].printCellInfo();
+          DISABLE_LOGD = false;
+          */
+
+          // JsonDocument deviceObj = deviceList[bleIndex];
+          // String deviceTopic = deviceObj["mqtt"]["topic"];
+          publishJson("stat/" + getDeviceTopic(deviceIndex) + "STATE", myBleArr[bleIndex].getState(), true);
+          // publishJson("stat/" + systemTopic + "STATE", voltMater.getVoltage(), true);
+          // voltMater.lastMeasurment = millis();
+
+          myLcd.updateBmsInfo(bleIndex, myBleArr[bleIndex].packBasicInfo.Volts / 1000.0f,
+                              myBleArr[bleIndex].packBasicInfo.Amps / 1000.0f,
+                              myBleArr[bleIndex].packCellInfo.CellDiff / 1.0f,
+                              myBleArr[bleIndex].packBasicInfo.Temp1 / 10.0f,
+                              myBleArr[bleIndex].packBasicInfo.Temp2 / 10.0f,
+                              myBleArr[bleIndex].packBasicInfo.CapacityRemainPercent);
         }
-        mqttClient.loop();
+        else if (myBleArr[bleIndex].timeout(millis()))
+        {
+          myLcd.updateBmsInfo(bleIndex, myBleArr[bleIndex].packBasicInfo.Volts / 1000.0f,
+                              myBleArr[bleIndex].packBasicInfo.Amps / 1000.0f,
+                              myBleArr[bleIndex].packCellInfo.CellDiff / 1.0f,
+                              myBleArr[bleIndex].packBasicInfo.Temp1 / 10.0f,
+                              myBleArr[bleIndex].packBasicInfo.Temp2 / 10.0f,
+                              myBleArr[bleIndex].packBasicInfo.CapacityRemainPercent);
+          publishJson("stat/" + myBleArr[bleIndex].topic + "STATE", myBleArr[bleIndex].getState(), true);
+          myBleArr[bleIndex].lastMeasurment = millis();
+        }
+      }
+      bleIndex++;
+    }
+    else if (type.equals("VAMater"))
+    {
+      if (voltMater.enabled && voltMater.timeout(millis()))
+      {
+        myLcd.updateVoltMaterInfo(voltMater.calVoltage);
+        publishJson("stat/" + voltMater.topic + "STATE", voltMater.getState(), true);
+        voltMater.lastMeasurment = millis();
       }
     }
-    if (myBleArr[deviceId].packBasicInfo.Volts > wakeUpVoltageMv && !WiFi.isConnected())
+    else if (type.equals("Lipo"))
+    {
+      if (lipoMater.enabled && lipoMater.timeout(millis()))
+      {
+        myLcd.updateLipoInfo();
+        publishJson("stat/" + lipoMater.topic + "STATE", lipoMater.getState(), true);
+        lipoMater.lastMeasurment = millis();
+      }
+    }
+  }
+  /*
+  if (ambientClient2.timeout(millis()))
+  {
+    // LOGD(TAG, "millis() - ambientlLastSent: " + String(millis()) + " - " + String(ambientlLastSent) + " >= ambientSendIntervalMs: " + String(ambientSendIntervalMs));
+    if (!WiFi.isConnected())
     {
       wifiConnect();
-      LOGD(TAG, "woke up and WiFi reconnected, batteryVoltage: " + String(myBleArr[deviceId].packBasicInfo.Volts) + " > " + String(sleepVoltageMv));
-      // ambientSendIntervalMs = ambientSendIntervalBaseMs;
-      ambientClient2.resetInterval();
     }
-    //
-    // if ((millis() - ambientlLastSent) >= ambientSendIntervalMs)
-    if (ambientClient2.timeout(millis()))
-    {
-      // LOGD(TAG, "millis() - ambientlLastSent: " + String(millis()) + " - " + String(ambientlLastSent) + " >= ambientSendIntervalMs: " + String(ambientSendIntervalMs));
-      if (!WiFi.isConnected())
-      {
-        wifiConnect();
-      }
-      float values[7];
-      values[0] = myBleArr[deviceId].packBasicInfo.Volts / 1000.0f;
-      values[1] = myBleArr[deviceId].packBasicInfo.Amps / 1000.0f;
-      values[2] = myBleArr[deviceId].packCellInfo.CellDiff / 1.0f;
-      values[3] = myBleArr[deviceId].packBasicInfo.Temp1 / 10.0f;
-      if (numberOfTemperature == 2)
-        values[3] = (myBleArr[deviceId].packBasicInfo.Temp1 + myBleArr[deviceId].packBasicInfo.Temp2) / 2 / 10.0f;
-      values[4] = myBleArr[deviceId].packBasicInfo.CapacityRemainPercent;
-      values[5] = M5.Axp.GetBatVoltage();
-      values[6] = M5.Axp.GetBatCurrent();
-      ambientClient2.set(values);
-      ambientClient2.send();
-      ambientClient2.ambientlLastSent = millis();
-
-      //publishJson("stat/" + hostTopic + "STATE", voltMater.getVoltage(), true);
-      //voltMater.lastMeasurment = millis();
-
-      if (myBleArr[deviceId].packBasicInfo.Volts <= deepSleepVoltageMv)
-      {
-        String logStr = "Going to deep sleep now and wake up in " + String(deepSleepTimeSec) + " seconds";
-        LOGD(TAG, logStr);
-        myLcd.println(logStr);
-        publish("stat/" + hostTopic + "STATE", logStr);
-        delay(2500);
-        // esp_deep_sleep_start(); //link error
-        // M5.Axp.DeepSleep(SLEEP_SEC(5)); // link error
-        // PowerSaving::enable();
-        // sleep(deepSleepTimeSec);
-        M5.shutdown(deepSleepTimeSec);
-        // myDeepSleep(deepSleepTimeSec); // link error
-        // LOGD(TAG, "This will never be printed");
-      }
-      else
-        LOGD(TAG, "PackVoltage: " + String(myBleArr[deviceId].packBasicInfo.Volts) + " > " + String(deepSleepVoltageMv));
-    }
+    float values[7];
+    int bleIndex = 0;
+    values[0] = myBleArr[bleIndex].packBasicInfo.Volts / 1000.0f;
+    values[1] = myBleArr[bleIndex].packBasicInfo.Amps / 1000.0f;
+    values[2] = myBleArr[bleIndex].packCellInfo.CellDiff / 1.0f;
+    values[3] = myBleArr[bleIndex].packBasicInfo.Temp1 / 10.0f;
+    if (numberOfTemperature == 2)
+      values[3] = (myBleArr[bleIndex].packBasicInfo.Temp1 + myBleArr[bleIndex].packBasicInfo.Temp2) / 2 / 10.0f;
+    values[4] = myBleArr[bleIndex].packBasicInfo.CapacityRemainPercent;
+    values[5] = M5.Axp.GetBatVoltage();
+    values[6] = M5.Axp.GetBatCurrent();
+    ambientClient2.set(values);
+    ambientClient2.send();
+    ambientClient2.ambientlLastSent = millis();
   }
-  if (voltMater.timeout(millis()))
-  {
-    publishJson("stat/" + hostTopic + "STATE", voltMater.getVoltage(), true);
-    voltMater.lastMeasurment = millis();
-  }
+  */
+  // delay(100);
 }

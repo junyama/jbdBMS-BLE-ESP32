@@ -38,12 +38,23 @@ MyBLE2::MyBLE2()
 {
 }
 
-/*
-MyBLE2::MyBLE2(JsonDocument *configJson_)
-    : configJson(configJson_)
+MyBLE2::MyBLE2(JsonDocument deviceObj)
 {
+    String mac_ = deviceObj["mac"];
+    if (mac_ != "null")
+        mac = mac_;
+    LOGD(TAG, "mac: " + mac);
+    String topic_ = deviceObj["mqtt"]["topic"];
+    if (topic_ != "null")
+        topic = topic_;
+    LOGD(TAG, "topic: " + topic);
+    int numberOfTemperature_ = deviceObj["numberOfTemperature"];
+    if (numberOfTemperature_)
+        numberOfTemperature = numberOfTemperature_;
+    LOGD(TAG, "numberOfTemperature: " + String(numberOfTemperature));
+    packBasicInfo.Volts = 15000;
+    LOGD(TAG, "packBasicInfo.Volts: " + String(packBasicInfo.Volts));
 }
-*/
 
 int16_t MyBLE2::two_ints_into16(int highbyte, int lowbyte) // turns two bytes into a single long integer
 {
@@ -480,13 +491,14 @@ void MyBLE2::bleStartup()
     // have detected a new device.  Specify that we want active scanning and start the
     // scan to run for 5 seconds.
     BLEScan *pBLEScan = BLEDevice::getScan();
-    myAdvertisedDeviceCallbacks = new MyAdvertisedDeviceCallbacks(serviceUUID, configJson);
+    myAdvertisedDeviceCallbacks = new MyAdvertisedDeviceCallbacks(serviceUUID, mac);
     pBLEScan->setAdvertisedDeviceCallbacks(myAdvertisedDeviceCallbacks);
     // pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
     pBLEScan->setInterval(1349);
     pBLEScan->setWindow(449);
     pBLEScan->setActiveScan(true);
     pBLEScan->start(5, true);
+    pBLEScan->clearResults(); // refer to https://lang-ship.com/reference/unofficial/M5StickC/Class/ESP32/BLEScan/
 }
 
 bool MyBLE2::connectToServer()
@@ -542,9 +554,20 @@ bool MyBLE2::connectToServer()
 
 void MyBLE2::disconnectFromServer() // does not work as intended, but automatically reconnected
 {
+    LOGD(TAG, "disconnecting from Server...");
     pClient->disconnect();
     // BLE_client_connected = false;
-    LOGD(TAG, "disconnected from the BLE Server.");
+    bool isConnected = pClient->isConnected();
+    LOGD(TAG, "isConnected() = " + String(isConnected));
+    // pClient->~BLEClient();
+    //return;
+}
+
+bool MyBLE2::isConnected()
+{
+    bool isConnected = pClient->isConnected();
+    LOGD(TAG, "isConnected() = " + String(isConnected));
+    return isConnected;
 }
 
 void MyBLE2::bleRequestData()
@@ -568,11 +591,10 @@ void MyBLE2::bleRequestData()
         myAdvertisedDeviceCallbacks->doConnect = false;
     }
 
-    // If we are connected to a peer BLE Server, update the characteristic each time we are reached
-    // with the current time since boot.
-    if (myClientCallback->BLE_client_connected == true)
+    //  If we are connected to a peer BLE Server, update the characteristic each time we are reached
+    //  with the current time since boot.
+    if (myClientCallback->BLE_client_connected == true) // seem to crash here
     {
-
         unsigned long currentMillis = millis();
         if ((currentMillis - previousMillis >= interval || newPacketReceived)) // every time period or when packet is received
         {
@@ -627,9 +649,9 @@ void MyBLE2::bleRequestData()
         }
     }
     else if (myAdvertisedDeviceCallbacks->doScan)
-    {
-        BLEDevice::getScan()->start(0); // this is just example to start scan after disconnect, most likely there is better way to do it in arduino
-    }
+        {
+            BLEDevice::getScan()->start(0); // this is just example to start scan after disconnect, most likely there is better way to do it in arduino
+        }
 
     // bmsSimulate();
 }
@@ -658,22 +680,62 @@ void MyBLE2::mosfetCtrl(int chargeStatus, int dischargeStatus)
     commandParam = (byte)chargeStatus + (byte)dischargeStatus * 2;
 }
 
-void MyBLE2::getDeviceNameLoop()
+String MyBLE2::getDeviceNameLoop()
 {
     for (int i = 0; i < 20; i++)
     {
-      bleRequestData();
-      if (newPacketReceived == true)
-      {
-        if (deviceNameStr)
+        bleRequestData();
+        if (newPacketReceived == true)
         {
-          LOGD(TAG, "deviceNameStr: " + deviceNameStr);
-          return;
+            if (deviceNameStr)
+            {
+                LOGD(TAG, "deviceNameStr: " + deviceNameStr);
+                return deviceNameStr;
+            }
+            LOGD(TAG, "deviceNameStr: null");
+            delay(500);
         }
-        LOGD(TAG, "deviceNameStr: null");
-        delay(500);
-      }
     }
+    return "";
 }
 
+JsonDocument MyBLE2::getState()
+{
+    JsonDocument doc;
+    doc["deviceName"] = deviceNameStr;
+    doc["batteryVoltage"] = String(packBasicInfo.Volts / 1000.0);
+    doc["batteryCurrent"] = String(packBasicInfo.Amps / 1000.0);
+    doc["batteryTemp1"] = String(packBasicInfo.Temp1 / 10.0);
+    if (numberOfTemperature == 2)
+        doc["batteryTemp2"] = String(packBasicInfo.Temp2 / 10.0);
+    doc["batteryChargePercentage"] = String(packBasicInfo.CapacityRemainPercent);
+    doc["chargeStatus"] = String(packBasicInfo.MosfetStatus & 1);
+    doc["dischargeStatus"] = String((packBasicInfo.MosfetStatus & 2) >> 1);
+    doc["connectionStatus"] = String(isConnected());
+    // JsonDocument doc2 = voltMater.getVoltage();
+    // doc["calVoltage"] = doc2["calVoltage"];
+    // doc["lipoVoltage"] = String(M5.Axp.GetBatVoltage());
+    // doc["lipoCurrent"] = String(M5.Axp.GetBatCurrent());
+    return doc;
+}
+
+bool MyBLE2::timeout(int currentTime)
+{
+    if ((currentTime - lastMeasurment) >= measurmentIntervalMs)
+    {
+        LOGD(TAG, "millis() - lastMeasument: " + String(currentTime) + " - " + String(lastMeasurment) + " >= measurmentIntervalMs: " + String(measurmentIntervalMs));
+        return true;
+    }
+    else
+        return false;
+}
+
+JsonDocument MyBLE2::getDeviceStatus()
+{
+    JsonDocument doc;
+    LOGD(TAG, "getDeviceStatus() called");
+    // doc["BLE_client_connected"] = String(myClientCallback->BLE_client_connected);
+    doc["doConnect"] = String(myAdvertisedDeviceCallbacks->doConnect);
+    return doc;
+}
 #endif /* MY_BLE2_CPP_ */

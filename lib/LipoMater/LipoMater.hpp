@@ -1,5 +1,5 @@
-#ifndef VOLT_MATER_HPP
-#define VOLT_MATER_HPP
+#ifndef LIPO_MATER_HPP
+#define LIPO_MATER_HPP
 
 #include "M5Core2.h"
 #include "MyDebug.hpp"
@@ -14,23 +14,21 @@
 
 #define MSG_BUFFER_SIZE (50)
 
-class VoltMater
+class LipoMater
 {
 private:
-    const String TAG = "VoltMater";
-    ADS1115 vmeter;
-    float resolution = 0.0;
-    float calibration_factor = 0.0;
+    const String TAG = "LipoMater";
 
 public:
     bool enabled = false;
-    float calVoltage;
-    int measurmentIntervalMs = 10000;
+    float voltage;
+    float current;
+    int measurmentIntervalMs = 60000;
     unsigned long lastMeasurment = 0;
-    String topic = "junichiVoltMater_0/";
+    String topic = "junichiLipo_0/";
     bool timeout(int currentTime);
     void setup(JsonDocument deviceObj);
     JsonDocument getState();
 };
 
-#endif /* POWER_SAVING2_HPP */
+#endif /* LIPO_MATER_HPP */

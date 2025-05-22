@@ -17,7 +17,7 @@ public:
     int ledState = 1;
 
     void setup();
-    void loop();
+    //void loop();
     void enable();
     void disable();
 };

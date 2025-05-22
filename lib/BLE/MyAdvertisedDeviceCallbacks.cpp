@@ -11,36 +11,24 @@ MyAdvertisedDeviceCallbacks::MyAdvertisedDeviceCallbacks()
 {
 }
 
-MyAdvertisedDeviceCallbacks::MyAdvertisedDeviceCallbacks(BLEUUID serviceUUID_, JsonDocument *configJson_)
-    : serviceUUID(serviceUUID_), doConnect(false), doScan(false), configJson(configJson_)
+MyAdvertisedDeviceCallbacks::MyAdvertisedDeviceCallbacks(BLEUUID serviceUUID_, String mac_)
+    : serviceUUID(serviceUUID_), doConnect(false), doScan(false), mac(mac_)
 {
 }
 
-bool MyAdvertisedDeviceCallbacks::isAddressInConfigList(BLEAdvertisedDevice advertisedDevice)
+bool MyAdvertisedDeviceCallbacks::isAddressInDeviceList(BLEAdvertisedDevice advertisedDevice)
 {
-    LOGD(TAG, "Check BLEAddress(" + String(advertisedDevice.getAddress().toString().c_str()) + ") in config.json.");
-    JsonDocument bleConfig = (*configJson)["BLE"];
-    // JsonDocument *list = configJson->["BLE"]; // compile error
-    if (bleConfig.size())
+    std::string macStr = std::string(mac.c_str());
+    if (advertisedDevice.getAddress().equals(BLEAddress(macStr)))
     {
-        for (int i = 0; i < bleConfig.size(); i++)
-        {
-            std::string mac = bleConfig[i]["mac"];
-            if (advertisedDevice.getAddress().equals(BLEAddress(mac)))
-            {
-                LOGD(TAG, "discoved address equals to config: " + String(mac.c_str()));
-                return true;
-            }
-            else
-                LOGD(TAG, "discoved address NOT equals to config: " + String(mac.c_str()));
-        }
-        LOGD(TAG, "discoved address NOT in config");
-        return false;
+        LOGD(TAG, "discoved address equals to config MAC: " + mac);
+        return true;
     }
     else
     {
-        LOGD(TAG, "No BLE key in coonfigJson. Any mac is OK.");
-        return true;
+        LOGD(TAG, "discoved address NOT equals to config MAC: " + mac);
+        return false;
+        //return true;
     }
 }
 
@@ -48,14 +36,23 @@ void MyAdvertisedDeviceCallbacks::onResult(BLEAdvertisedDevice advertisedDevice)
 {
     LOGD(TAG, "BLE Advertised Device found: " + String(advertisedDevice.toString().c_str()));
     // We have found a device, let us now see if it contains the service we are looking for.
-    if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(serviceUUID) && isAddressInConfigList(advertisedDevice))
+    if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(serviceUUID))
     {
-        LOGD(TAG, "Found our server");
-        BLEDevice::getScan()->stop();
-        myDevice = new BLEAdvertisedDevice(advertisedDevice);
-        doConnect = true;
-        doScan = true;
-    } // Found our server
+        LOGD(TAG, "service UUID is correct");
+        if (isAddressInDeviceList(advertisedDevice))
+        {
+            LOGD(TAG, "mac is in the list");
+            LOGD(TAG, "Found our server");
+            BLEDevice::getScan()->stop();
+            myDevice = new BLEAdvertisedDevice(advertisedDevice);
+            doConnect = true;
+            doScan = true;
+        }
+        else
+            LOGD(TAG, "mac is NOT in the list");
+    }
+    else
+        LOGD(TAG, "service UUID is NOT correct");
 }
 
 #endif /* MY_ADVERTISE_DEVICE_CPP */
