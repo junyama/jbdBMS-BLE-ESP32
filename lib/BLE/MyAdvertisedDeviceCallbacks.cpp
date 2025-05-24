@@ -28,7 +28,7 @@ bool MyAdvertisedDeviceCallbacks::isAddressInDeviceList(BLEAdvertisedDevice adve
     {
         LOGD(TAG, "discoved address NOT equals to config MAC: " + mac);
         return false;
-        //return true;
+        //return true; for debugging
     }
 }
 
@@ -41,8 +41,9 @@ void MyAdvertisedDeviceCallbacks::onResult(BLEAdvertisedDevice advertisedDevice)
         LOGD(TAG, "service UUID is correct");
         if (isAddressInDeviceList(advertisedDevice))
         {
-            LOGD(TAG, "mac is in the list");
-            LOGD(TAG, "Found our server");
+            LOGD(TAG, "mac is correct");
+            deviceName = String(advertisedDevice.getName().c_str());
+            LOGD(TAG, "Found our server: " + deviceName);
             BLEDevice::getScan()->stop();
             myDevice = new BLEAdvertisedDevice(advertisedDevice);
             doConnect = true;

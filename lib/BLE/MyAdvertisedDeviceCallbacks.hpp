@@ -24,6 +24,7 @@ public:
 	boolean doScan;
 
 	BLEAdvertisedDevice *myDevice;
+	String deviceName = "NOT_FOUND";
 	MyAdvertisedDeviceCallbacks();
 	MyAdvertisedDeviceCallbacks(BLEUUID serviceUUID, String mac_);
 };

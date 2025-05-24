@@ -96,7 +96,7 @@ private:
 public:
     //JsonDocument *configJson;
     bool enabled = false;
-    String mac;
+    String mac = "xxxxx";
     String topic = "junichiBMS_X/";
     int measurmentIntervalMs = 10000;
     unsigned long lastMeasurment = 0;
@@ -120,7 +120,7 @@ public:
     packBasicInfoStruct packBasicInfo; // here shall be the latest data got from BMS
     packCellInfoStruct packCellInfo;   // here shall be the latest data got from BMS
     // char *deviceName;
-    String deviceNameStr = "";
+    String deviceName = "UNKNOWN";
     int numberOfTemperature = 2;
 
     // MyBLE();

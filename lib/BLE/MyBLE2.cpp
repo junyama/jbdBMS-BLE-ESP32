@@ -178,9 +178,9 @@ bool MyBLE2::processDeviceInfo(byte *data, unsigned int dataLen)
     char chars[dataLen + 1];
     memcpy(chars, data, dataLen);
     chars[dataLen] = '\0';
-    deviceNameStr = String(chars);
-    LOGD(TAG, "deviceNameStr: " + deviceNameStr);
-    M5.Lcd.println(deviceNameStr);
+    // deviceName = String(chars);
+    // LOGD(TAG, "deviceName: " + deviceName);
+    // M5.Lcd.println(deviceName);
     return true;
 }
 
@@ -497,7 +497,9 @@ void MyBLE2::bleStartup()
     pBLEScan->setInterval(1349);
     pBLEScan->setWindow(449);
     pBLEScan->setActiveScan(true);
-    pBLEScan->start(5, true);
+    pBLEScan->start(3, true);
+    deviceName = myAdvertisedDeviceCallbacks->deviceName;
+    LOGD(TAG, "deviceName found by AdvertisedDeviceCallback: " + deviceName);
     pBLEScan->clearResults(); // refer to https://lang-ship.com/reference/unofficial/M5StickC/Class/ESP32/BLEScan/
 }
 
@@ -560,7 +562,7 @@ void MyBLE2::disconnectFromServer() // does not work as intended, but automatica
     bool isConnected = pClient->isConnected();
     LOGD(TAG, "isConnected() = " + String(isConnected));
     // pClient->~BLEClient();
-    //return;
+    // return;
 }
 
 bool MyBLE2::isConnected()
@@ -649,9 +651,9 @@ void MyBLE2::bleRequestData()
         }
     }
     else if (myAdvertisedDeviceCallbacks->doScan)
-        {
-            BLEDevice::getScan()->start(0); // this is just example to start scan after disconnect, most likely there is better way to do it in arduino
-        }
+    {
+        BLEDevice::getScan()->start(0); // this is just example to start scan after disconnect, most likely there is better way to do it in arduino
+    }
 
     // bmsSimulate();
 }
@@ -680,6 +682,7 @@ void MyBLE2::mosfetCtrl(int chargeStatus, int dischargeStatus)
     commandParam = (byte)chargeStatus + (byte)dischargeStatus * 2;
 }
 
+/*
 String MyBLE2::getDeviceNameLoop()
 {
     for (int i = 0; i < 20; i++)
@@ -689,20 +692,21 @@ String MyBLE2::getDeviceNameLoop()
         {
             if (deviceNameStr)
             {
-                LOGD(TAG, "deviceNameStr: " + deviceNameStr);
+                LOGD(TAG, "returning deviceNameStr: " + deviceNameStr);
                 return deviceNameStr;
             }
             LOGD(TAG, "deviceNameStr: null");
             delay(500);
         }
     }
-    return "";
+    //return "UNKNOWM"; //Why is this line invoked?
 }
+    */
 
 JsonDocument MyBLE2::getState()
 {
     JsonDocument doc;
-    doc["deviceName"] = deviceNameStr;
+    doc["deviceName"] = deviceName;
     doc["batteryVoltage"] = String(packBasicInfo.Volts / 1000.0);
     doc["batteryCurrent"] = String(packBasicInfo.Amps / 1000.0);
     doc["batteryTemp1"] = String(packBasicInfo.Temp1 / 10.0);
@@ -734,8 +738,21 @@ JsonDocument MyBLE2::getDeviceStatus()
 {
     JsonDocument doc;
     LOGD(TAG, "getDeviceStatus() called");
-    // doc["BLE_client_connected"] = String(myClientCallback->BLE_client_connected);
-    doc["doConnect"] = String(myAdvertisedDeviceCallbacks->doConnect);
+    doc["doConnect"] = (int)myAdvertisedDeviceCallbacks->doConnect;
+    if (myAdvertisedDeviceCallbacks->myDevice)
+        doc["myDevice"] = String(myAdvertisedDeviceCallbacks->myDevice->getAddress().toString().c_str());
+    else
+        doc["myDevice"] = "NOT SET";
+    if (myClientCallback)
+        doc["BLE_client_connected"] = (int)myClientCallback->BLE_client_connected;
+    else
+        doc["BLE_client_connected"] = 0;
+    doc["mac"] = mac;
+    doc["deviceName"] = deviceName;
+    doc["numberOfTemperature"] = numberOfTemperature;
+    doc["topic"] = topic;
+    doc["enabled"] = (int)enabled;
+
     return doc;
 }
 #endif /* MY_BLE2_CPP_ */
