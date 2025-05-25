@@ -22,7 +22,7 @@ MyClientCallback::MyClientCallback(boolean *p_BLE_client_connected)
 
 void MyClientCallback::onConnect(BLEClient *pclient)
 {
-    //digitalWrite(BLE_LED, HIGH);
+    digitalWrite(BLE_LED, HIGH);
     LOGD(TAG, "onConnect");
 }
 

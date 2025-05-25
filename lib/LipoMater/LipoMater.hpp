@@ -20,7 +20,7 @@ private:
     const String TAG = "LipoMater";
 
 public:
-    bool enabled = false;
+    bool available = false;
     float voltage;
     float current;
     int measurmentIntervalMs = 60000;

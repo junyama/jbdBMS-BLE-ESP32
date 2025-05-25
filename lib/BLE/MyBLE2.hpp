@@ -95,7 +95,7 @@ private:
 
 public:
     //JsonDocument *configJson;
-    bool enabled = false;
+    bool available = false;
     String mac = "xxxxx";
     String topic = "junichiBMS_X/";
     int measurmentIntervalMs = 10000;
@@ -137,10 +137,11 @@ public:
     // void bmsDisableCharge();
     // void bmsEnableCharge();
     void mosfetCtrl(int chargeStatus, int dischargeStatus);
-    String getDeviceNameLoop();
+    //String getDeviceNameLoop();
     JsonDocument getState();
     bool timeout(int currentTime);
     JsonDocument getDeviceStatus();
+    void waitLoop(int waitTime);
 };
 
 #endif /* MY_BLE2_HPP */

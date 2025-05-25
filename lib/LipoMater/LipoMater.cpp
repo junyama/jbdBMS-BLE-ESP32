@@ -7,7 +7,7 @@ using namespace MyLOG;
 
 void LipoMater::setup(JsonDocument deviceObj)
 {
-    enabled = true;
+    available = true;
     if (deviceObj["measurmentIntervalMs"])
         measurmentIntervalMs = deviceObj["measurmentIntervalMs"];
     String topic_ = deviceObj["mqtt"]["topic"];
@@ -30,7 +30,7 @@ bool LipoMater::timeout(int currentTime)
 JsonDocument LipoMater::getState()
 {
     JsonDocument doc;
-    if (enabled)
+    if (available)
     {
         voltage = M5.Axp.GetBatVoltage();
         doc["voltage"] = voltage;

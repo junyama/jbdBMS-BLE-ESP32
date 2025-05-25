@@ -618,10 +618,10 @@ void mqttCallback(char *topic_, byte *payload, unsigned int length)
   for (int bleIndex = 0; bleIndex < numberOfBleDevices; bleIndex++)
   {
     LOGD(TAG, "myBleArr[" + String(bleIndex) + "].topic = " + myBleArr[bleIndex].topic);
-    LOGD(TAG, "myBleArr[" + String(bleIndex) + "].enabled = " + String(myBleArr[bleIndex].enabled));
-    if (!myBleArr[bleIndex].enabled)
+    LOGD(TAG, "myBleArr[" + String(bleIndex) + "].available = " + String(myBleArr[bleIndex].available));
+    if (!myBleArr[bleIndex].available)
     {
-      LOGD(TAG, "myBleArr[" + String(bleIndex) + "] is not enabled so continue.");
+      LOGD(TAG, "myBleArr[" + String(bleIndex) + "] is not available so continue.");
       continue;
     }
     String deviceTopic = myBleArr[bleIndex].topic;
@@ -968,18 +968,18 @@ void setup()
       int doConnect = deviceStatus["doConnect"];
       if (doConnect == 0)
       {
-        LOGD(TAG, "myBleArr[bleIndex].enabled = false");
+        LOGD(TAG, "myBleArr[bleIndex].available = false");
         myLcd.println("BLE(" + String(bleIndex) + ") is not available");
       }
       else
       {
         myLcd.println("BLE(" + String(bleIndex) + ") is connected");
-        LOGD(TAG, "myBleArr[bleIndex].enabled = true");
+        LOGD(TAG, "myBleArr[bleIndex].available = true");
       }
       */
-      myBleArr[bleIndex].enabled = myBleArr[bleIndex].myAdvertisedDeviceCallbacks->doConnect;
+      myBleArr[bleIndex].available = myBleArr[bleIndex].myAdvertisedDeviceCallbacks->doConnect;
       //
-      if (myBleArr[bleIndex].enabled)
+      if (myBleArr[bleIndex].available)
       {
         // LOGD(TAG, "getting BLE device name");
         // String deviceName = myBleArr[bleIndex].getDeviceNameLoop();
@@ -996,7 +996,7 @@ void setup()
       voltMater.setup(deviceObj);
       // if (topic != "null")
       // voltMater.topic = topic;
-      if (voltMater.enabled)
+      if (voltMater.available)
         publishHaDiscovery2(deviceObj);
       LOGD(TAG, "Volt Mater setup done");
       myLcd.println("Volt Mater setup done!");
@@ -1006,7 +1006,7 @@ void setup()
       lipoMater.setup(deviceObj);
       // if (topic != "null")
       // lipoMater.topic = topic;
-      if (lipoMater.enabled)
+      if (lipoMater.available)
         publishHaDiscovery2(deviceObj);
       LOGD(TAG, "Lipo Mater setup done");
       myLcd.println("Lipo Mater setup done!");
@@ -1058,17 +1058,17 @@ void loop()
   }
   mqttClient.loop();
 
-  int bleIndex = 0;
-  for (int deviceIndex = 0; deviceIndex < deviceList.size(); deviceIndex++)
+  //int bleIndex = 0;
+  for (int bleIndex = 0; bleIndex < numberOfBleDevices; bleIndex++)
   {
-    JsonDocument deviceObj = deviceList[deviceIndex];
-    String type = deviceObj["type"];
+    //JsonDocument deviceObj = deviceList[deviceIndex];
+    //String type = deviceObj["type"];
     // String topic = getDeviceTopic(deviceIndex);
-    String topic = deviceObj["mqtt"]["topic"];
-    if (type.equals("BMS"))
+    //String topic = deviceObj["mqtt"]["topic"];
+    //if (type.equals("BMS"))
     {
       // LOGD(TAG, "going to bleRequestData()");
-      if (myBleArr[bleIndex].enabled)
+      if (myBleArr[bleIndex].available)
       {
         myBleArr[bleIndex].bleRequestData();
         if (myBleArr[bleIndex].newPacketReceived == true)
@@ -1090,7 +1090,7 @@ void loop()
 
           // JsonDocument deviceObj = deviceList[bleIndex];
           // String deviceTopic = deviceObj["mqtt"]["topic"];
-          publishJson("stat/" + getDeviceTopic(deviceIndex) + "STATE", myBleArr[bleIndex].getState(), true);
+          publishJson("stat/" + myBleArr[bleIndex].topic + "STATE", myBleArr[bleIndex].getState(), true);
           // publishJson("stat/" + systemTopic + "STATE", voltMater.getVoltage(), true);
           // voltMater.lastMeasurment = millis();
 
@@ -1112,23 +1112,18 @@ void loop()
           publishJson("stat/" + myBleArr[bleIndex].topic + "STATE", myBleArr[bleIndex].getState(), true);
           myBleArr[bleIndex].lastMeasurment = millis();
         }
+        //myBleArr[bleIndex].disconnectFromServer(); //Jun: added, but a reconnect does not work.
       }
-      bleIndex++;
-    }
-    else if (type.equals("VAMater"))
-    {
-    }
-    else if (type.equals("Lipo"))
-    {
+      //bleIndex++;
     }
   }
-  if (voltMater.enabled && voltMater.timeout(millis()))
+  if (voltMater.available && voltMater.timeout(millis()))
   {
     myLcd.updateVoltMaterInfo(voltMater.calVoltage);
     publishJson("stat/" + voltMater.topic + "STATE", voltMater.getState(), true);
     voltMater.lastMeasurment = millis();
   }
-  if (lipoMater.enabled && lipoMater.timeout(millis()))
+  if (lipoMater.available && lipoMater.timeout(millis()))
   {
     myLcd.updateLipoInfo();
     publishJson("stat/" + lipoMater.topic + "STATE", lipoMater.getState(), true);

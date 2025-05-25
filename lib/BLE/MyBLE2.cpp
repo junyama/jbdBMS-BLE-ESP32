@@ -513,14 +513,17 @@ bool MyBLE2::connectToServer()
     LOGD(TAG, "Created client");
     myClientCallback = new MyClientCallback();
     pClient->setClientCallbacks(myClientCallback);
+    LOGD(TAG, "set ClientCallbacks");
     // pClient->setClientCallbacks(new MyClientCallback());
-
     // Connect to the remove BLE Server.
     pClient->connect(myAdvertisedDeviceCallbacks->myDevice); // if you pass BLEAdvertisedDevice instead of address, it will be recognized type of peer device address (public or private)
+    //Jun: should add some waiting mechanizm here. refer to https://forum.arduino.cc/t/bt-ble-multi-server-the-client-is-not-able-to-connect-to-the-servers-if-one-goes-down-off/1018488
     LOGD(TAG, "Connected to server");
+    LOGD(TAG, "isConnected(): " + String(isConnected()));
     //  Obtain a reference to the service we are after in the remote BLE server.
     //  BLERemoteService*
-    pRemoteService = pClient->getService(serviceUUID);
+    pRemoteService = pClient->getService(serviceUUID); //Jun: no onConnect and stop here!
+    LOGD(TAG, "pClient->getService(serviceUUID)");
     if (pRemoteService == nullptr)
     {
         LOGD(TAG, "Failed to find our service UUID: ");
@@ -554,21 +557,22 @@ bool MyBLE2::connectToServer()
     return myClientCallback->BLE_client_connected = true;
 }
 
-void MyBLE2::disconnectFromServer() // does not work as intended, but automatically reconnected
+void MyBLE2::disconnectFromServer()
 {
-    LOGD(TAG, "disconnecting from Server...");
+    // LOGD(TAG, "disconnecting from Server...");
     pClient->disconnect();
-    // BLE_client_connected = false;
-    bool isConnected = pClient->isConnected();
-    LOGD(TAG, "isConnected() = " + String(isConnected));
-    // pClient->~BLEClient();
-    // return;
+    // delete myClientCallback;
+    //  BLE_client_connected = false;
+    // bool isConnected = pClient->isConnected();
+    // LOGD(TAG, "isConnected() = " + String(isConnected));
+    //  pClient->~BLEClient();
+    //  return;
 }
 
 bool MyBLE2::isConnected()
 {
     bool isConnected = pClient->isConnected();
-    LOGD(TAG, "isConnected() = " + String(isConnected));
+    //LOGD(TAG, "isConnected() = " + String(isConnected));
     return isConnected;
 }
 
@@ -590,7 +594,7 @@ void MyBLE2::bleRequestData()
             LOGD(TAG, "failed to connect to the BLE Server.");
             // lcdConnectionFailed();
         }
-        myAdvertisedDeviceCallbacks->doConnect = false;
+        myAdvertisedDeviceCallbacks->doConnect = false; //Jun: if comment out, try to reconect but frozen
     }
 
     //  If we are connected to a peer BLE Server, update the characteristic each time we are reached
@@ -751,8 +755,18 @@ JsonDocument MyBLE2::getDeviceStatus()
     doc["deviceName"] = deviceName;
     doc["numberOfTemperature"] = numberOfTemperature;
     doc["topic"] = topic;
-    doc["enabled"] = (int)enabled;
+    doc["available"] = (int)available;
 
     return doc;
 }
+
+void MyBLE2::waitLoop(int waitTime)
+{
+    unsigned long currentTime = millis();
+    while (millis() - currentTime < waitTime)
+    {
+        //wait;
+    }
+}
+
 #endif /* MY_BLE2_CPP_ */

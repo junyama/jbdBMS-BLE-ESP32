@@ -7,17 +7,17 @@ using namespace MyLOG;
 
 void VoltMater::setup(JsonDocument deviceObj)
 {
-    enabled = true;
+    available = true;
     int i = 1;
     while (!vmeter.begin(&Wire, M5_UNIT_VMETER_I2C_ADDR, 32, 33, 400000U))
     {
         LOGD(TAG, String(i) + ": Unit vmeter Init Fail");
         //M5.Lcd.println("Unit vmeter Init Fail");
-        if (i > 3)
+        if (i > 2)
         {
             LOGD(TAG, "gave up using volt mater.");
             M5.Lcd.println("gave up using volt mater.");
-            enabled = false;
+            available = false;
             return;
         }
         i++;
@@ -61,7 +61,7 @@ bool VoltMater::timeout(int currentTime)
 JsonDocument VoltMater::getState()
 {
     JsonDocument doc;
-    if (enabled)
+    if (available)
     {
         int16_t adc_raw = vmeter.getSingleConversion();
         float voltage = adc_raw * resolution * calibration_factor;
