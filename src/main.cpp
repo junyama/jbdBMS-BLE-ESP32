@@ -74,6 +74,9 @@ int numberOfBleDevices = 0;
 //  bool cellBalanceList[4];
 bool chargeStatus, dischargeStatus;
 
+int MyBLE2::reconnectIntervalMs = 5000;
+unsigned long MyBLE2::lastDisconnect = 0;
+
 // Volt Mater
 VoltMater voltMater;
 
@@ -1058,14 +1061,14 @@ void loop()
   }
   mqttClient.loop();
 
-  //int bleIndex = 0;
+  // int bleIndex = 0;
   for (int bleIndex = 0; bleIndex < numberOfBleDevices; bleIndex++)
   {
-    //JsonDocument deviceObj = deviceList[deviceIndex];
-    //String type = deviceObj["type"];
-    // String topic = getDeviceTopic(deviceIndex);
-    //String topic = deviceObj["mqtt"]["topic"];
-    //if (type.equals("BMS"))
+    // JsonDocument deviceObj = deviceList[deviceIndex];
+    // String type = deviceObj["type"];
+    //  String topic = getDeviceTopic(deviceIndex);
+    // String topic = deviceObj["mqtt"]["topic"];
+    // if (type.equals("BMS"))
     {
       // LOGD(TAG, "going to bleRequestData()");
       if (myBleArr[bleIndex].available)
@@ -1112,9 +1115,9 @@ void loop()
           publishJson("stat/" + myBleArr[bleIndex].topic + "STATE", myBleArr[bleIndex].getState(), true);
           myBleArr[bleIndex].lastMeasurment = millis();
         }
-        //myBleArr[bleIndex].disconnectFromServer(); //Jun: added, but a reconnect does not work.
+        myBleArr[bleIndex].disconnectFromServer(); // Jun: added
       }
-      //bleIndex++;
+      // bleIndex++;
     }
   }
   if (voltMater.available && voltMater.timeout(millis()))

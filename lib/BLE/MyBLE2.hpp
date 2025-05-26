@@ -141,7 +141,10 @@ public:
     JsonDocument getState();
     bool timeout(int currentTime);
     JsonDocument getDeviceStatus();
-    void waitLoop(int waitTime);
+
+    static int reconnectIntervalMs;
+    static unsigned long lastDisconnect;
+    static bool reconnectTmeout(int currentTime);
 };
 
 #endif /* MY_BLE2_HPP */
